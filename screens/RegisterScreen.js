@@ -145,94 +145,98 @@ export default function RegisterScreen({ navigation }) {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <Text style={styles.title}>Cadastro</Text>
+          <View style={styles.card}>
+            <Text style={styles.title}>Cadastro</Text>
 
-          <TextInput placeholder="Nome" style={styles.input} value={nome} onChangeText={setNome} />
-          <TextInput placeholder="Sobrenome" style={styles.input} value={sobrenome} onChangeText={setSobrenome} />
+            <TextInput placeholder="Nome" style={styles.input} value={nome} onChangeText={setNome} />
+            <TextInput placeholder="Sobrenome" style={styles.input} value={sobrenome} onChangeText={setSobrenome} />
 
-          <TextInputMask
-            type={'cel-phone'}
-            options={{ maskType: 'BRL', withDDD: true, dddMask: '(99) ' }}
-            placeholder="Telefone"
-            style={styles.input}
-            value={telefone}
-            onChangeText={setTelefone}
-            keyboardType="phone-pad"
-          />
-
-          <TextInput
-            placeholder="CEP"
-            style={styles.input}
-            value={cep}
-            onChangeText={(text) => setCep(text.replace(/\D/g, ''))}
-            keyboardType="numeric"
-          />
-
-          <TextInput placeholder="Endereço" style={styles.input} value={endereco} onChangeText={setEndereco} />
-          <TextInput placeholder="Número" style={styles.input} value={numero} onChangeText={setNumero} keyboardType="numeric" />
-          <TextInput placeholder="Complemento" style={styles.input} value={complemento} onChangeText={setComplemento} />
-          <TextInput placeholder="Bairro" style={styles.input} value={bairro} onChangeText={setBairro} />
-          <TextInput placeholder="Cidade" style={styles.input} value={cidade} onChangeText={setCidade} />
-          <TextInput placeholder="Estado" style={styles.input} value={estado} onChangeText={setEstado} />
-
-          <Text style={styles.label}>Tipo de usuário:</Text>
-          <Picker
-            selectedValue={tipo}
-            onValueChange={(itemValue) => setTipo(itemValue)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Selecione..." value="" />
-            <Picker.Item label="Cliente" value="cliente" />
-            <Picker.Item label="Fornecedor" value="fornecedor" />
-          </Picker>
-
-          {tipo === 'fornecedor' && (
             <TextInputMask
-              type={'cnpj'}
-              placeholder="CNPJ"
+              type={'cel-phone'}
+              options={{ maskType: 'BRL', withDDD: true, dddMask: '(99) ' }}
+              placeholder="Telefone"
               style={styles.input}
-              value={cnpj}
-              onChangeText={setCnpj}
+              value={telefone}
+              onChangeText={setTelefone}
+              keyboardType="phone-pad"
+            />
+
+            <TextInput
+              placeholder="CEP"
+              style={styles.input}
+              value={cep}
+              onChangeText={(text) => setCep(text.replace(/\D/g, ''))}
               keyboardType="numeric"
             />
-          )}
 
-          <TextInput
-            placeholder="Email"
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+            <TextInput placeholder="Endereço" style={styles.input} value={endereco} onChangeText={setEndereco} />
+            <TextInput placeholder="Número" style={styles.input} value={numero} onChangeText={setNumero} keyboardType="numeric" />
+            <TextInput placeholder="Complemento" style={styles.input} value={complemento} onChangeText={setComplemento} />
+            <TextInput placeholder="Bairro" style={styles.input} value={bairro} onChangeText={setBairro} />
+            <TextInput placeholder="Cidade" style={styles.input} value={cidade} onChangeText={setCidade} />
+            <TextInput placeholder="Estado" style={styles.input} value={estado} onChangeText={setEstado} />
 
-          <View style={styles.passwordContainer}>
-            <TextInput
-              placeholder="Senha"
-              style={styles.passwordInput}
-              value={senha}
-              onChangeText={setSenha}
-              secureTextEntry={!mostrarSenha}
-            />
-            <TouchableOpacity onPress={() => setMostrarSenha(!mostrarSenha)}>
-              <Icon
-                name={mostrarSenha ?  'visibility' : 'visibility-off'}
-                size={24}
-                color="#666"
+            <Text style={styles.label}>Tipo de usuário:</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={tipo}
+                onValueChange={(itemValue) => setTipo(itemValue)}
+                style={styles.picker}
+              >
+                <Picker.Item label="Selecione..." value="" />
+                <Picker.Item label="Cliente" value="cliente" />
+                <Picker.Item label="Fornecedor" value="fornecedor" />
+              </Picker>
+            </View>
+
+            {tipo === 'fornecedor' && (
+              <TextInputMask
+                type={'cnpj'}
+                placeholder="CNPJ"
+                style={styles.input}
+                value={cnpj}
+                onChangeText={setCnpj}
+                keyboardType="numeric"
               />
+            )}
+
+            <TextInput
+              placeholder="Email"
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <View style={styles.passwordContainer}>
+              <TextInput
+                placeholder="Senha"
+                style={styles.passwordInput}
+                value={senha}
+                onChangeText={setSenha}
+                secureTextEntry={!mostrarSenha}
+              />
+              <TouchableOpacity onPress={() => setMostrarSenha(!mostrarSenha)}>
+                <Icon
+                  name={mostrarSenha ? 'visibility' : 'visibility-off'}
+                  size={24}
+                  color="#888"
+                />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.senhaRegras}>
+              A senha deve ter no mínimo 8 caracteres, uma letra maiúscula e um caractere especial.
+            </Text>
+
+            <TouchableOpacity style={styles.button} onPress={handleRegister}>
+              <Text style={styles.buttonText}>Cadastrar</Text>
             </TouchableOpacity>
-          </View>
 
-          <Text style={styles.senhaRegras}>
-            A senha deve ter no mínimo 8 caracteres, uma letra maiúscula e um caractere especial.
-          </Text>
-
-          <View style={styles.buttonContainer}>
-            <Button title="Cadastrar" onPress={handleRegister} />
-          </View>
-
-          <View style={styles.buttonContainer}>
-            <Button title="Já tem conta? Fazer login" onPress={() => navigation.replace('Login')} />
+            <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => navigation.replace('Login')}>
+              <Text style={styles.buttonText}>Já tem conta? Fazer login</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </TouchableWithoutFeedback>
@@ -241,43 +245,90 @@ export default function RegisterScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: '#fff', flexGrow: 1 },
-  title: { fontSize: 24, marginBottom: 20, textAlign: 'center' },
+  container: {
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    backgroundColor: '#f2f2f2',
+    flexGrow: 1,
+    alignItems: 'center',
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 25,
+    textAlign: 'center',
+    color: '#333',
+  },
   input: {
-    height: 45,
-    borderColor: '#ccc',
+    height: 50,
+    borderColor: '#ddd',
     borderWidth: 1,
-    paddingHorizontal: 10,
-    marginBottom: 10,
-    borderRadius: 5,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    backgroundColor: '#fafafa',
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    marginBottom: 12,
+    overflow: 'hidden',
+    backgroundColor: '#fafafa',
   },
   picker: {
     height: 50,
-    marginBottom: 10,
+    width: '100%',
   },
   label: {
-    fontWeight: 'bold',
-    marginBottom: 5,
+    fontWeight: '600',
+    marginBottom: 6,
+    marginTop: 8,
+    color: '#333',
   },
   senhaRegras: {
     fontSize: 12,
-    color: 'gray',
-    marginBottom: 10,
-  },
-  buttonContainer: {
-    marginVertical: 5,
+    color: '#888',
+    marginBottom: 15,
+    textAlign: 'center',
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderColor: '#ccc',
+    borderColor: '#ddd',
     borderWidth: 1,
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    height: 45,
-    marginBottom: 10,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 50,
+    backgroundColor: '#fafafa',
+    marginBottom: 12,
   },
   passwordInput: {
     flex: 1,
+  },
+  button: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  secondaryButton: {
+    backgroundColor: '#2196F3',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
