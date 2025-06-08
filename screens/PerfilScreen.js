@@ -9,6 +9,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Modal,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
 } from 'react-native';
 import { auth, db } from '../firebaseConfig';
 import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -23,7 +26,6 @@ export default function PerfilScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [senhaConfirmacao, setSenhaConfirmacao] = useState('');
 
-  // Campos editáveis
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [cep, setCep] = useState('');
@@ -163,143 +165,148 @@ export default function PerfilScreen() {
   if (!usuario) return <Text>Usuário não encontrado</Text>;
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.titulo}>Meu Perfil</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={100}
+    >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <Text style={styles.titulo}>Meu Perfil</Text>
 
-      <Text style={styles.label}>Nome:</Text>
- {editando ? (
-  <TextInput value={nome} onChangeText={setNome} style={styles.input} />
- ) : (
-  <Text style={styles.valor}>{nome}</Text>
- )}
+        <Text style={styles.label}>Nome:</Text>
+        {editando ? (
+          <TextInput value={nome} onChangeText={setNome} style={styles.input} />
+        ) : (
+          <Text style={styles.valor}>{nome}</Text>
+        )}
 
+        <Text style={styles.label}>Email:</Text>
+        <Text style={styles.valor}>{usuario.email}</Text>
 
-      <Text style={styles.label}>Email:</Text>
-      <Text style={styles.valor}>{usuario.email}</Text>
+        <Text style={styles.label}>Telefone:</Text>
+        {editando ? (
+          <TextInput
+            value={formatarTelefone(telefone)}
+            onChangeText={(texto) => setTelefone(texto.replace(/\D/g, ''))}
+            style={styles.input}
+            keyboardType="phone-pad"
+            maxLength={15}
+          />
+        ) : (
+          <Text style={styles.valor}>{formatarTelefone(telefone)}</Text>
+        )}
 
-      <Text style={styles.label}>Telefone:</Text>
-      {editando ? (
-        <TextInput
-          value={formatarTelefone(telefone)}
-          onChangeText={(texto) => setTelefone(texto.replace(/\D/g, ''))}
-          style={styles.input}
-          keyboardType="phone-pad"
-          maxLength={15}
-        />
-      ) : (
-        <Text style={styles.valor}>{formatarTelefone(telefone)}</Text>
-      )}
+        <Text style={styles.label}>CEP:</Text>
+        {editando ? (
+          <TextInput
+            value={cep}
+            onChangeText={(texto) => {
+              const cleanCep = texto.replace(/\D/g, '');
+              setCep(cleanCep);
+              if (cleanCep.length === 8) buscarEnderecoPorCep(cleanCep);
+            }}
+            keyboardType="numeric"
+            style={styles.input}
+            maxLength={8}
+          />
+        ) : (
+          <Text style={styles.valor}>{cep}</Text>
+        )}
 
-      <Text style={styles.label}>CEP:</Text>
-      {editando ? (
-        <TextInput
-          value={cep}
-          onChangeText={(texto) => {
-            const cleanCep = texto.replace(/\D/g, '');
-            setCep(cleanCep);
-            if (cleanCep.length === 8) buscarEnderecoPorCep(cleanCep);
-          }}
-          keyboardType="numeric"
-          style={styles.input}
-          maxLength={8}
-        />
-      ) : (
-        <Text style={styles.valor}>{cep}</Text>
-      )}
+        <Text style={styles.label}>Endereço:</Text>
+        {editando ? (
+          <TextInput value={endereco} onChangeText={setEndereco} style={styles.input} />
+        ) : (
+          <Text style={styles.valor}>{endereco}</Text>
+        )}
 
-      <Text style={styles.label}>Endereço:</Text>
-      {editando ? (
-        <TextInput value={endereco} onChangeText={setEndereco} style={styles.input} />
-      ) : (
-        <Text style={styles.valor}>{endereco}</Text>
-      )}
+        <Text style={styles.label}>Número:</Text>
+        {editando ? (
+          <TextInput value={numero} onChangeText={setNumero} style={styles.input} keyboardType="numeric" />
+        ) : (
+          <Text style={styles.valor}>{numero}</Text>
+        )}
 
-      <Text style={styles.label}>Número:</Text>
-      {editando ? (
-        <TextInput value={numero} onChangeText={setNumero} style={styles.input} keyboardType="numeric" />
-      ) : (
-        <Text style={styles.valor}>{numero}</Text>
-      )}
+        <Text style={styles.label}>Complemento:</Text>
+        {editando ? (
+          <TextInput value={complemento} onChangeText={setComplemento} style={styles.input} />
+        ) : (
+          <Text style={styles.valor}>{complemento}</Text>
+        )}
 
-      <Text style={styles.label}>Complemento:</Text>
-      {editando ? (
-        <TextInput value={complemento} onChangeText={setComplemento} style={styles.input} />
-      ) : (
-        <Text style={styles.valor}>{complemento}</Text>
-      )}
+        <Text style={styles.label}>Bairro:</Text>
+        {editando ? (
+          <TextInput value={bairro} onChangeText={setBairro} style={styles.input} />
+        ) : (
+          <Text style={styles.valor}>{bairro}</Text>
+        )}
 
-      <Text style={styles.label}>Bairro:</Text>
-      {editando ? (
-        <TextInput value={bairro} onChangeText={setBairro} style={styles.input} />
-      ) : (
-        <Text style={styles.valor}>{bairro}</Text>
-      )}
+        <Text style={styles.label}>Cidade:</Text>
+        {editando ? (
+          <TextInput value={cidade} onChangeText={setCidade} style={styles.input} />
+        ) : (
+          <Text style={styles.valor}>{cidade}</Text>
+        )}
 
-      <Text style={styles.label}>Cidade:</Text>
-      {editando ? (
-        <TextInput value={cidade} onChangeText={setCidade} style={styles.input} />
-      ) : (
-        <Text style={styles.valor}>{cidade}</Text>
-      )}
+        <Text style={styles.label}>Estado:</Text>
+        {editando ? (
+          <TextInput value={estado} onChangeText={setEstado} style={styles.input} maxLength={2} />
+        ) : (
+          <Text style={styles.valor}>{estado}</Text>
+        )}
 
-      <Text style={styles.label}>Estado:</Text>
-      {editando ? (
-        <TextInput value={estado} onChangeText={setEstado} style={styles.input} maxLength={2} />
-      ) : (
-        <Text style={styles.valor}>{estado}</Text>
-      )}
+        {editando ? (
+          <Button title="Salvar" onPress={salvarEdicao} color="green" />
+        ) : (
+          <Button title="Editar Perfil" onPress={() => setEditando(true)} />
+        )}
 
-      {editando ? (
-        <Button title="Salvar" onPress={salvarEdicao} color="green" />
-      ) : (
-        <Button title="Editar Perfil" onPress={() => setEditando(true)} />
-      )}
+        <View style={{ marginTop: 1 }}>
+          <TouchableOpacity style={styles.botao} onPress={() => navigation.navigate('Ajuda')}>
+            <Text style={styles.botaoTexto}>Ajuda</Text>
+          </TouchableOpacity>
 
-      <View style={{ marginTop: 1 }}>
-        <TouchableOpacity style={styles.botao} onPress={() => navigation.navigate('Ajuda')}>
-          <Text style={styles.botaoTexto}>Ajuda</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.botao, { backgroundColor: '#FF8C00' }]}
+            onPress={confirmarDesativacao}
+          >
+            <Text style={styles.botaoTexto}>Desativar Conta</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.botao, { backgroundColor: '#FF8C00' }]}
-          onPress={confirmarDesativacao}
-        >
-          <Text style={styles.botaoTexto}>Desativar Conta</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={[styles.botao, { backgroundColor: 'red' }]} onPress={handleLogout}>
+            <Text style={styles.botaoTexto}>Sair da conta</Text>
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity style={[styles.botao, { backgroundColor: 'red' }]} onPress={handleLogout}>
-          <Text style={styles.botaoTexto}>Sair da conta</Text>
-        </TouchableOpacity>
-      </View>
-
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={{ marginBottom: 10 }}>Digite sua senha para confirmar:</Text>
-            <TextInput
-              style={styles.input}
-              secureTextEntry
-              placeholder="Senha"
-              value={senhaConfirmacao}
-              onChangeText={setSenhaConfirmacao}
-            />
-            <View style={{ flexDirection: 'row', marginTop: 10 }}>
-              <Button title="Cancelar" onPress={() => setModalVisible(false)} />
-              <View style={{ width: 10 }} />
-              <Button title="Confirmar" onPress={desativarConta} color="red" />
+        <Modal visible={modalVisible} transparent animationType="slide">
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Text style={{ marginBottom: 10 }}>Digite sua senha para confirmar:</Text>
+              <TextInput
+                style={styles.input}
+                secureTextEntry
+                placeholder="Senha"
+                value={senhaConfirmacao}
+                onChangeText={setSenhaConfirmacao}
+              />
+              <View style={{ flexDirection: 'row', marginTop: 10 }}>
+                <Button title="Cancelar" onPress={() => setModalVisible(false)} />
+                <View style={{ width: 10 }} />
+                <Button title="Confirmar" onPress={desativarConta} color="red" />
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: 20,
     backgroundColor: '#f9f9f9',
+    flexGrow: 1,
   },
   titulo: {
     fontSize: 24,
