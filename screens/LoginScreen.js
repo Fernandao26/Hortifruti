@@ -145,21 +145,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 35,
-    borderWidth: 1,
-    borderColor: "blue",
   },
   container: {
     width: "100%",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "red",
-    marginTop: 20,
+
+    marginTop: 10,
   },
   topImage: {
     width: 50,
     height: 40,
-    borderWidth: 1,
-    borderColor: "red",
+
     zIndex: 10,
     position: "absolute",
     alignSelf: "flex-start",
@@ -167,7 +163,7 @@ const styles = StyleSheet.create({
 
   image: {
     width: 270,
-    height: 300,
+    height: 280,
     marginBottom: 0,
 
     marginTop: 20,
@@ -190,10 +186,12 @@ const styles = StyleSheet.create({
   EmailTitle: {
     color: "gray",
     alignSelf: "flex-start",
+    marginBottom: 5,
   },
   passwordTitle: {
     color: "gray",
     alignSelf: "flex-start",
+    marginBottom: 5,
   },
   input: {
     width: "100%",
