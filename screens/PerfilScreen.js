@@ -8,10 +8,11 @@ import {
   Alert,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { auth, db } from '../firebaseConfig';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { signOut } from 'firebase/auth';
+import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { signOut, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 
@@ -19,8 +20,11 @@ export default function PerfilScreen() {
   const [usuario, setUsuario] = useState(null);
   const [editando, setEditando] = useState(false);
   const [carregando, setCarregando] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [senhaConfirmacao, setSenhaConfirmacao] = useState('');
 
   // Campos editáveis
+  const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [cep, setCep] = useState('');
   const [endereco, setEndereco] = useState('');
@@ -41,6 +45,7 @@ export default function PerfilScreen() {
         if (snapshot.exists()) {
           const dados = snapshot.data();
           setUsuario(dados);
+          setNome(dados.nome || '');
           setTelefone(dados.telefone || '');
           setCep(dados.cep || '');
           setEndereco(dados.endereco || '');
@@ -94,6 +99,7 @@ export default function PerfilScreen() {
       const docRef = doc(db, 'users', uid);
 
       await updateDoc(docRef, {
+        nome,
         telefone,
         cep,
         endereco,
@@ -123,6 +129,28 @@ export default function PerfilScreen() {
     }
   };
 
+  const confirmarDesativacao = () => {
+    setModalVisible(true);
+  };
+
+  const desativarConta = async () => {
+    try {
+      const user = auth.currentUser;
+      const credential = EmailAuthProvider.credential(user.email, senhaConfirmacao);
+      await reauthenticateWithCredential(user, credential);
+
+      await deleteDoc(doc(db, 'users', user.uid));
+      await deleteUser(user);
+
+      Alert.alert('Conta desativada com sucesso.');
+      setModalVisible(false);
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Erro ao desativar conta', 'Verifique sua senha e tente novamente.');
+    }
+  };
+
   if (carregando) {
     return (
       <View style={styles.loadingContainer}>
@@ -139,7 +167,12 @@ export default function PerfilScreen() {
       <Text style={styles.titulo}>Meu Perfil</Text>
 
       <Text style={styles.label}>Nome:</Text>
-      <Text style={styles.valor}>{usuario.nome}</Text>
+ {editando ? (
+  <TextInput value={nome} onChangeText={setNome} style={styles.input} />
+ ) : (
+  <Text style={styles.valor}>{nome}</Text>
+ )}
+
 
       <Text style={styles.label}>Email:</Text>
       <Text style={styles.valor}>{usuario.email}</Text>
@@ -222,15 +255,42 @@ export default function PerfilScreen() {
         <Button title="Editar Perfil" onPress={() => setEditando(true)} />
       )}
 
-      <View style={{ marginTop: 30 }}>
+      <View style={{ marginTop: 1 }}>
         <TouchableOpacity style={styles.botao} onPress={() => navigation.navigate('Ajuda')}>
           <Text style={styles.botaoTexto}>Ajuda</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.botao, { backgroundColor: '#FF8C00' }]}
+          onPress={confirmarDesativacao}
+        >
+          <Text style={styles.botaoTexto}>Desativar Conta</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.botao, { backgroundColor: 'red' }]} onPress={handleLogout}>
           <Text style={styles.botaoTexto}>Sair da conta</Text>
         </TouchableOpacity>
       </View>
+
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={{ marginBottom: 10 }}>Digite sua senha para confirmar:</Text>
+            <TextInput
+              style={styles.input}
+              secureTextEntry
+              placeholder="Senha"
+              value={senhaConfirmacao}
+              onChangeText={setSenhaConfirmacao}
+            />
+            <View style={{ flexDirection: 'row', marginTop: 10 }}>
+              <Button title="Cancelar" onPress={() => setModalVisible(false)} />
+              <View style={{ width: 10 }} />
+              <Button title="Confirmar" onPress={desativarConta} color="red" />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -265,7 +325,7 @@ const styles = StyleSheet.create({
   botao: {
     backgroundColor: '#4CAF50',
     padding: 12,
-    marginTop: 15,
+    marginTop: 7,
     borderRadius: 8,
   },
   botaoTexto: {
@@ -277,5 +337,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 8,
   },
 });

@@ -216,7 +216,7 @@ export default function RegisterScreen({ navigation }) {
             />
             <TouchableOpacity onPress={() => setMostrarSenha(!mostrarSenha)}>
               <Icon
-                name={mostrarSenha ? 'visibility-off' : 'visibility'}
+                name={mostrarSenha ?  'visibility' : 'visibility-off'}
                 size={24}
                 color="#666"
               />

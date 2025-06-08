@@ -4,7 +4,7 @@ import { View, Image, StyleSheet } from 'react-native';
 export default function SplashScreen() {
   return (
     <View style={styles.container}>
-      <Image source={require('../assets/logo1.png')} style={styles.logo} />
+      <Image source={require('../img/ABERTURAofi.jpg')} style={styles.logo} />
     </View>
   );
 }
@@ -12,13 +12,11 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   logo: {
-    width: 200,
-    height: 200,
-    resizeMode: 'contain',
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover', // pode usar 'contain' se quiser a imagem inteira visível com bordas
   },
 });
