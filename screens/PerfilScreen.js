@@ -12,6 +12,8 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { auth, db } from '../firebaseConfig';
 import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -25,7 +27,7 @@ export default function PerfilScreen() {
   const [carregando, setCarregando] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
   const [senhaConfirmacao, setSenhaConfirmacao] = useState('');
-
+  
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   const [cep, setCep] = useState('');
@@ -166,23 +168,23 @@ export default function PerfilScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={100}
-    >
+    style={{ flex: 1 }}
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+  >
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.titulo}>Meu Perfil</Text>
-
+  
         <Text style={styles.label}>Nome:</Text>
         {editando ? (
           <TextInput value={nome} onChangeText={setNome} style={styles.input} />
         ) : (
           <Text style={styles.valor}>{nome}</Text>
         )}
-
+  
         <Text style={styles.label}>Email:</Text>
         <Text style={styles.valor}>{usuario.email}</Text>
-
+  
         <Text style={styles.label}>Telefone:</Text>
         {editando ? (
           <TextInput
@@ -195,7 +197,7 @@ export default function PerfilScreen() {
         ) : (
           <Text style={styles.valor}>{formatarTelefone(telefone)}</Text>
         )}
-
+  
         <Text style={styles.label}>CEP:</Text>
         {editando ? (
           <TextInput
@@ -212,72 +214,72 @@ export default function PerfilScreen() {
         ) : (
           <Text style={styles.valor}>{cep}</Text>
         )}
-
+  
         <Text style={styles.label}>Endereço:</Text>
         {editando ? (
           <TextInput value={endereco} onChangeText={setEndereco} style={styles.input} />
         ) : (
           <Text style={styles.valor}>{endereco}</Text>
         )}
-
+  
         <Text style={styles.label}>Número:</Text>
         {editando ? (
           <TextInput value={numero} onChangeText={setNumero} style={styles.input} keyboardType="numeric" />
         ) : (
           <Text style={styles.valor}>{numero}</Text>
         )}
-
+  
         <Text style={styles.label}>Complemento:</Text>
         {editando ? (
           <TextInput value={complemento} onChangeText={setComplemento} style={styles.input} />
         ) : (
           <Text style={styles.valor}>{complemento}</Text>
         )}
-
+  
         <Text style={styles.label}>Bairro:</Text>
         {editando ? (
           <TextInput value={bairro} onChangeText={setBairro} style={styles.input} />
         ) : (
           <Text style={styles.valor}>{bairro}</Text>
         )}
-
+  
         <Text style={styles.label}>Cidade:</Text>
         {editando ? (
           <TextInput value={cidade} onChangeText={setCidade} style={styles.input} />
         ) : (
           <Text style={styles.valor}>{cidade}</Text>
         )}
-
+  
         <Text style={styles.label}>Estado:</Text>
         {editando ? (
           <TextInput value={estado} onChangeText={setEstado} style={styles.input} maxLength={2} />
         ) : (
           <Text style={styles.valor}>{estado}</Text>
         )}
-
+  
         {editando ? (
           <Button title="Salvar" onPress={salvarEdicao} color="green" />
         ) : (
           <Button title="Editar Perfil" onPress={() => setEditando(true)} />
         )}
-
+  
         <View style={{ marginTop: 1 }}>
           <TouchableOpacity style={styles.botao} onPress={() => navigation.navigate('Ajuda')}>
             <Text style={styles.botaoTexto}>Ajuda</Text>
           </TouchableOpacity>
-
+  
           <TouchableOpacity
             style={[styles.botao, { backgroundColor: '#FF8C00' }]}
             onPress={confirmarDesativacao}
           >
             <Text style={styles.botaoTexto}>Desativar Conta</Text>
           </TouchableOpacity>
-
+  
           <TouchableOpacity style={[styles.botao, { backgroundColor: 'red' }]} onPress={handleLogout}>
             <Text style={styles.botaoTexto}>Sair da conta</Text>
           </TouchableOpacity>
         </View>
-
+  
         <Modal visible={modalVisible} transparent animationType="slide">
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
@@ -298,7 +300,8 @@ export default function PerfilScreen() {
           </View>
         </Modal>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
+  </KeyboardAvoidingView>  
   );
 }
 

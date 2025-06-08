@@ -288,6 +288,8 @@ const [filtroTipo, setFiltroTipo] = useState('');
     />
   </>
 )}
+
+
       {telaAtual === 'vendidos' && (
   <>
     <Picker
@@ -329,22 +331,23 @@ const [filtroTipo, setFiltroTipo] = useState('');
 
       {/* Menu Inferior */}
       <View style={styles.menuInferior}>
-        <TouchableOpacity onPress={() => setTelaAtual('ativos')}>
-          <Text>Ativos</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setTelaAtual('vendidos')}>
-          <Text>Vendidos</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setTelaAtual('cadastro')}>
-          <Text>Cadastro</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setTelaAtual('dashboard')}>
-          <Text>Dashboard</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => { signOut(getAuth()); navigation.navigate('Login'); }}>
-          <Text>Sair</Text>
-        </TouchableOpacity>
-      </View>
+  <TouchableOpacity onPress={() => setTelaAtual('ativos')}>
+    <Text>Ativos</Text>
+  </TouchableOpacity>
+  <TouchableOpacity onPress={() => setTelaAtual('vendidos')}>
+    <Text>Vendidos</Text>
+  </TouchableOpacity>
+  <TouchableOpacity onPress={() => setTelaAtual('cadastro')}>
+    <Text>Cadastro</Text>
+  </TouchableOpacity>
+  <TouchableOpacity onPress={() => setTelaAtual('dashboard')}>
+    <Text>Dashboard</Text>
+  </TouchableOpacity>
+  <TouchableOpacity onPress={() => navigation.navigate('Perfil')}>
+  <Text>Perfil</Text>
+</TouchableOpacity>
+</View>
+
     </View>
   );
 
