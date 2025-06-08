@@ -19,6 +19,7 @@ import { auth, db } from "../firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
 import { TextInputMask } from "react-native-masked-text";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import { TextInput as RPTextInput } from "react-native-paper";
 
 export default function RegisterScreen({ navigation }) {
   const [nome, setNome] = useState("");
@@ -153,7 +154,19 @@ export default function RegisterScreen({ navigation }) {
       }
     }
   };
+  function maskPhone(text) {
+    const cleaned = text.replace(/\D/g, "");
 
+    if (cleaned.length > 10) {
+      return cleaned.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
+    } else if (cleaned.length > 5) {
+      return cleaned.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+    } else if (cleaned.length > 2) {
+      return cleaned.replace(/^(\d{2})(\d{0,5})/, "($1) $2");
+    } else {
+      return cleaned;
+    }
+  }
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -166,76 +179,92 @@ export default function RegisterScreen({ navigation }) {
         >
           <View style={styles.card}>
             <Text style={styles.title}>Cadastro</Text>
-            <Text style={styles.nometitle}>Nome</Text>
-            <TextInput
-              placeholder="Nome"
-              style={styles.input}
+
+            <RPTextInput
+              label="Nome"
               value={nome}
               onChangeText={setNome}
+              mode="outlined"
+              style={{ marginBottom: 10 }}
             />
-            <TextInput
-              placeholder="Sobrenome"
-              style={styles.input}
+            <RPTextInput
+              label="Sobrenome"
               value={sobrenome}
               onChangeText={setSobrenome}
+              mode="outlined"
+              style={{ marginBottom: 10 }}
             />
 
-            <TextInputMask
-              type={"cel-phone"}
-              options={{ maskType: "BRL", withDDD: true, dddMask: "(99) " }}
-              placeholder="Telefone"
-              style={styles.input}
+            <RPTextInput
+              label="Telefone"
               value={telefone}
-              onChangeText={setTelefone}
+              onChangeText={(text) => setTelefone(maskPhone(text))}
               keyboardType="phone-pad"
+              mode="outlined"
+              style={{ marginBottom: 10 }}
             />
 
-            <TextInput
-              placeholder="CEP"
-              style={styles.input}
+            <RPTextInput
+              label="CEP"
               value={cep}
               onChangeText={(text) => setCep(text.replace(/\D/g, ""))}
               keyboardType="numeric"
+              mode="outlined"
+              style={{ marginBottom: 10 }}
             />
 
-            <TextInput
-              placeholder="Endereço"
-              style={styles.input}
+            <RPTextInput
+              label="Endereço"
               value={endereco}
               onChangeText={setEndereco}
+              mode="outlined"
+              style={{ marginBottom: 10 }}
             />
-            <TextInput
-              placeholder="Número"
-              style={styles.input}
-              value={numero}
-              onChangeText={setNumero}
-              keyboardType="numeric"
-            />
-            <TextInput
-              placeholder="Complemento"
-              style={styles.input}
-              value={complemento}
-              onChangeText={setComplemento}
-            />
-            <TextInput
-              placeholder="Bairro"
-              style={styles.input}
+            <View
+              style={{ flexDirection: "row", justifyContent: "space-between" }}
+            >
+              <RPTextInput
+                label="Número"
+                value={numero}
+                onChangeText={setNumero}
+                keyboardType="numeric"
+                mode="outlined"
+                style={{ marginBottom: 10, flex: 1, marginRight: 8 }}
+                // ocupa metade da largura menos a margem
+              />
+              <RPTextInput
+                label="Complemento"
+                value={complemento}
+                onChangeText={setComplemento}
+                mode="outlined"
+                style={{ marginBottom: 10, flex: 1 }} // ocupa metade da largura menos a margem
+              />
+            </View>
+            <RPTextInput
+              label="Bairro"
               value={bairro}
               onChangeText={setBairro}
+              mode="outlined"
+              style={{ marginBottom: 10 }}
             />
-            <TextInput
-              placeholder="Cidade"
-              style={styles.input}
-              value={cidade}
-              onChangeText={setCidade}
-            />
-            <TextInput
-              placeholder="Estado"
-              style={styles.input}
-              value={estado}
-              onChangeText={setEstado}
-            />
-
+            <View
+              style={{ flexDirection: "row", justifyContent: "space-between" }}
+            >
+              <RPTextInput
+                label="Cidade"
+                value={cidade}
+                onChangeText={setCidade}
+                mode="outlined"
+                style={{ marginBottom: 10, flex: 3, marginRight: 8 }}
+              />
+              <RPTextInput
+                label="Estado"
+                value={estado}
+                onChangeText={setEstado}
+                mode="outlined"
+                style={{ marginBottom: 10 }}
+              />
+            </View>
             <Text style={styles.label}>Tipo de usuário:</Text>
             <View style={styles.pickerContainer}>
               <Picker
@@ -260,18 +289,21 @@ export default function RegisterScreen({ navigation }) {
               />
             )}
 
+            <Text style={styles.EmailTitle}>Email</Text>
             <TextInput
-              placeholder="Email"
+              placeholder="Ex: Frutigo@gmail.com"
+              placeholderTextColor={"#69A461"}
               style={styles.input}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
             />
-
+            <Text style={styles.passwordTitle}>Senha</Text>
             <View style={styles.passwordContainer}>
               <TextInput
                 placeholder="Senha"
+                placeholderTextColor={"#69A461"}
                 style={styles.passwordInput}
                 value={senha}
                 onChangeText={setSenha}
@@ -281,7 +313,7 @@ export default function RegisterScreen({ navigation }) {
                 <Icon
                   name={mostrarSenha ? "visibility" : "visibility-off"}
                   size={24}
-                  color="#888"
+                  color="#69A461"
                 />
               </TouchableOpacity>
             </View>
@@ -342,12 +374,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginBottom: 12,
     backgroundColor: "#fafafa",
+    marginTop: 5,
   },
   pickerContainer: {
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,
-    marginBottom: 12,
+    marginBottom: 30,
     overflow: "hidden",
     backgroundColor: "#fafafa",
   },
@@ -358,14 +391,15 @@ const styles = StyleSheet.create({
   label: {
     fontWeight: "600",
     marginBottom: 6,
-    marginTop: 8,
+    marginTop: 30,
     color: "#333",
+    fontSize: 18,
   },
   senhaRegras: {
     fontSize: 12,
     color: "#888",
     marginBottom: 15,
-    textAlign: "center",
+    textAlign: "left",
   },
   passwordContainer: {
     flexDirection: "row",
@@ -377,16 +411,19 @@ const styles = StyleSheet.create({
     height: 50,
     backgroundColor: "#fafafa",
     marginBottom: 12,
+    marginTop: 5,
   },
   passwordInput: {
     flex: 1,
   },
   button: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#69A461",
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: "center",
+    alignSelf: "center",
     marginBottom: 10,
+    width: "80%",
   },
   secondaryButton: {
     backgroundColor: "#2196F3",

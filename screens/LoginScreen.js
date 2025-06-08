@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   topImage: {
     width: 50,
     height: 40,
-
+    marginTop: 0,
     zIndex: 10,
     position: "absolute",
     alignSelf: "flex-start",
