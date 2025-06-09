@@ -283,19 +283,22 @@ export default function RegisterScreen({ navigation }) {
 
             {tipo === "fornecedor" && (
               <>
-                <RPTextInput
-                  label="CNPJ"
-                  value={cnpj}
-                  onChangeText={setCnpj}
-                  mode="outlined"
-                  style={styles.input}
-                />
+                <Text style={{ marginBottom: 5, marginTop: 10, color: "#333", fontWeight: "500" }}>CNPJ</Text>
+    <TextInputMask
+      type={"cnpj"}
+      value={cnpj}
+      onChangeText={setCnpj}
+      keyboardType="numeric"
+      style={styles.input}
+      placeholder="00.000.000/0000-00"
+      placeholderTextColor="#69A461"
+    />
                 <RPTextInput
                   label="Nome da Empresa"
                   value={empresa}
                   onChangeText={setempresa}
                   mode="outlined"
-                  style={styles.input}
+                  style={{ marginBottom: 10, flex: 3, marginRight: 8 }}
                 />
               </>
             )}

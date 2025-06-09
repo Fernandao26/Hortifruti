@@ -48,7 +48,7 @@ export default function PerfilScreen() {
   const [cidade, setCidade] = useState("");
   const [estado, setEstado] = useState("");
   const [tipo, setTipo] = useState("");
-  const [empresa, setempresa] = useState("");
+  const [empresa, setEmpresa] = useState("");
 
   const navigation = useNavigation();
   const _goBack = () => {
@@ -371,7 +371,7 @@ export default function PerfilScreen() {
                 {editando ? (
                   <TextInput
                     value={empresa}
-                    onChangeText={setempresa}
+                    onChangeText={setEmpresa}
                     style={styles.input}
                   />
                 ) : (
