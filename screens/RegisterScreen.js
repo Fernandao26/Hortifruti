@@ -360,9 +360,9 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   title: {
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: "bold",
-    marginBottom: 25,
+    marginBottom: 15,
     textAlign: "center",
     color: "#333",
   },
