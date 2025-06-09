@@ -250,10 +250,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   imagem: {
-    width: "85%",
+    width: "100%",
     height: 90,
     borderRadius: 8,
     marginBottom: 8,
+    objectFit: "contain",
   },
   nome: {
     fontSize: 16,

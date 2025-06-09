@@ -36,6 +36,7 @@ export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [cnpj, setCnpj] = useState("");
+  const [empresa, setempresa] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
 
   useEffect(() => {
@@ -82,7 +83,7 @@ export default function RegisterScreen({ navigation }) {
       !tipo ||
       !email ||
       !senha ||
-      (tipo === "fornecedor" && !cnpj)
+      (tipo === "fornecedor" && (!cnpj || !empresa))
     ) {
       Alert.alert("Erro", "Todos os campos são obrigatórios.");
       return;
@@ -121,6 +122,7 @@ export default function RegisterScreen({ navigation }) {
 
       if (tipo === "fornecedor") {
         userData.cnpj = cnpj;
+        userData.empresa = empresa;
 
         // Salva também na coleção "fornecedores"
         await setDoc(doc(db, "fornecedores", uid), {
@@ -137,6 +139,7 @@ export default function RegisterScreen({ navigation }) {
           estado,
           email,
           cnpj,
+          empresa,
           tipo,
         });
       }
@@ -279,14 +282,22 @@ export default function RegisterScreen({ navigation }) {
             </View>
 
             {tipo === "fornecedor" && (
-              <TextInputMask
-                type={"cnpj"}
-                placeholder="CNPJ"
-                style={styles.input}
-                value={cnpj}
-                onChangeText={setCnpj}
-                keyboardType="numeric"
-              />
+              <>
+                <RPTextInput
+                  label="CNPJ"
+                  value={cnpj}
+                  onChangeText={setCnpj}
+                  mode="outlined"
+                  style={styles.input}
+                />
+                <RPTextInput
+                  label="Nome da Empresa"
+                  value={empresa}
+                  onChangeText={setempresa}
+                  mode="outlined"
+                  style={styles.input}
+                />
+              </>
             )}
 
             <Text style={styles.EmailTitle}>Email</Text>

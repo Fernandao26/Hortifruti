@@ -48,6 +48,7 @@ export default function PerfilScreen() {
   const [cidade, setCidade] = useState("");
   const [estado, setEstado] = useState("");
   const [tipo, setTipo] = useState("");
+  const [empresa, setempresa] = useState("");
 
   const navigation = useNavigation();
   const _goBack = () => {
@@ -74,6 +75,7 @@ export default function PerfilScreen() {
           setCidade(dados.cidade || "");
           setEstado(dados.estado || "");
           setTipo(dados.tipo || "");
+          setEmpresa(dados.empresa || "");
         }
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
@@ -132,6 +134,7 @@ export default function PerfilScreen() {
         cidade,
         estado,
         tipo,
+        empresa,
       });
 
       setEditando(false);
@@ -362,6 +365,20 @@ export default function PerfilScreen() {
               // permite quebrar a linha
             }}
           >
+            {tipo === "fornecedor" && (
+              <>
+                <Text style={styles.label}>Empresa</Text>
+                {editando ? (
+                  <TextInput
+                    value={empresa}
+                    onChangeText={setempresa}
+                    style={styles.input}
+                  />
+                ) : (
+                  <Text style={styles.valor}>{empresa}</Text>
+                )}
+              </>
+            )}
             <Text style={styles.label}>Nome</Text>
             {editando ? (
               <TextInput
@@ -382,10 +399,8 @@ export default function PerfilScreen() {
             ) : (
               <Text style={styles.valor}>{sobrenome}</Text>
             )}
-
             <Text style={styles.label}>Email</Text>
             <Text style={styles.valor}>{usuario.email}</Text>
-
             <Text style={styles.label}>Telefone</Text>
             {editando ? (
               <TextInput
@@ -398,7 +413,6 @@ export default function PerfilScreen() {
             ) : (
               <Text style={styles.valor}>{formatarTelefone(telefone)}</Text>
             )}
-
             <Text style={styles.label}>CEP</Text>
             {editando ? (
               <TextInput
@@ -415,7 +429,6 @@ export default function PerfilScreen() {
             ) : (
               <Text style={styles.valor}>{cep}</Text>
             )}
-
             <Text style={styles.label}>Endereço</Text>
             {editando ? (
               <TextInput
@@ -426,7 +439,6 @@ export default function PerfilScreen() {
             ) : (
               <Text style={styles.valor}>{endereco}</Text>
             )}
-
             <Text style={styles.label}>Número</Text>
             {editando ? (
               <TextInput
@@ -438,7 +450,6 @@ export default function PerfilScreen() {
             ) : (
               <Text style={styles.valor}>{numero}</Text>
             )}
-
             <Text style={styles.label}>Complemento</Text>
             {editando ? (
               <TextInput
@@ -449,7 +460,6 @@ export default function PerfilScreen() {
             ) : (
               <Text style={styles.valor}>{complemento}</Text>
             )}
-
             <Text style={styles.label}>Bairro</Text>
             {editando ? (
               <TextInput
@@ -460,7 +470,6 @@ export default function PerfilScreen() {
             ) : (
               <Text style={styles.valor}>{bairro}</Text>
             )}
-
             <Text style={styles.label}>Cidade</Text>
             {editando ? (
               <TextInput
@@ -471,7 +480,6 @@ export default function PerfilScreen() {
             ) : (
               <Text style={styles.valor}>{cidade}</Text>
             )}
-
             <Text style={styles.label}>Estado</Text>
             {editando ? (
               <TextInput
