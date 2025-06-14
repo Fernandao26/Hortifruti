@@ -15,6 +15,7 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
 import Icon from "react-native-vector-icons/MaterialIcons";
+import { wp, hp } from "../src/utils/responsive";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
@@ -149,8 +150,6 @@ const styles = StyleSheet.create({
   container: {
     width: "100%",
     alignItems: "center",
-
-    marginTop: 10,
   },
   topImage: {
     width: 50,
@@ -162,8 +161,8 @@ const styles = StyleSheet.create({
   },
 
   image: {
-    width: 270,
-    height: 280,
+    width: wp("100%"),
+    height: hp("40%"),
     marginBottom: 0,
 
     marginTop: 20,
