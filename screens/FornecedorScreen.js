@@ -338,13 +338,16 @@ const [filtroTipo, setFiltroTipo] = useState('');
   <Picker.Item label="Legumes" value="Legumes" />
   {/* Adicione mais categorias se quiser */}
 </Picker>
-    <TextInput
-      placeholder="Preço"
-      value={preco}
-      onChangeText={setPreco}
-      keyboardType="decimal-pad"
-      style={styles.input}
-    />
+<TextInput
+  value={preco ? `R$ ${parseFloat(preco).toFixed(2).replace('.', ',')}` : ''}
+  onChangeText={(text) => {
+    const onlyNumbers = text.replace(/[^0-9]/g, '');
+    const float = parseFloat(onlyNumbers) / 100;
+    setPreco(float.toFixed(2));
+  }}
+  keyboardType="numeric"
+  placeholder="Preço (R$)"
+/>
     <TextInput
       placeholder="Estoque"
       value={estoque}
