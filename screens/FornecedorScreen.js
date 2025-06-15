@@ -155,6 +155,10 @@ const [filtroTipo, setFiltroTipo] = useState('');
       Alert.alert('Produto editado com sucesso!');
       setModoEdicao(false);
       setProdutoSelecionado(null);
+      setNome('');
+      setCategoria('');
+      setPreco('');
+      setEstoque('');
       setTelaAtual('ativos');
       carregarProdutos();
     } catch (err) {
@@ -314,19 +318,49 @@ const [filtroTipo, setFiltroTipo] = useState('');
   </>
 )}
       {telaAtual === 'cadastro' && (
-        <EditarProduto
-          nome={nome}
-          setNome={setNome}
-          categoria={categoria}
-          setCategoria={setCategoria}
-          preco={preco}
-          setPreco={setPreco}
-          estoque={estoque}
-          setEstoque={setEstoque}
-          modoEdicao={modoEdicao}
-          salvar={modoEdicao ? salvarEdicaoProduto : cadastrarProduto}
-        />
-      )}
+  <ScrollView contentContainerStyle={{ padding: 20 }}>
+    <Text style={styles.titulo}>Cadastro de Produto</Text>
+
+    <TextInput
+      placeholder="Nome do Produto"
+      value={nome}
+      onChangeText={setNome}
+      style={styles.input}
+    />
+    <Picker
+  selectedValue={categoria}
+  onValueChange={(itemValue) => setCategoria(itemValue)}
+  style={styles.input}
+>
+  <Picker.Item label="Selecione a Categoria" value="" />
+  <Picker.Item label="Frutas" value="Frutas" />
+  <Picker.Item label="Verduras" value="Verduras" />
+  <Picker.Item label="Legumes" value="Legumes" />
+  {/* Adicione mais categorias se quiser */}
+</Picker>
+    <TextInput
+      placeholder="Preço"
+      value={preco}
+      onChangeText={setPreco}
+      keyboardType="decimal-pad"
+      style={styles.input}
+    />
+    <TextInput
+      placeholder="Estoque"
+      value={estoque}
+      onChangeText={setEstoque}
+      keyboardType="numeric"
+      style={styles.input}
+    />
+
+    <TouchableOpacity
+      onPress={modoEdicao ? salvarEdicaoProduto : cadastrarProduto}
+      style={styles.botaoSalvar}
+    >
+      <Text style={styles.textoBotao}>Salvar Produto</Text>
+    </TouchableOpacity>
+  </ScrollView>
+)}
       {telaAtual === 'dashboard' && renderDashboard()}
 
       {/* Menu Inferior */}
@@ -363,6 +397,21 @@ const styles = StyleSheet.create({
     borderTopWidth: 2,
     borderColor: '#ccc',
   },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10,
+    backgroundColor: '#fff',
+  },
+  botaoSalvar: {
+    backgroundColor: 'green',
+    padding: 15,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginTop: 10,
+  },
   menu: { flexDirection: 'row', justifyContent: 'space-around', marginVertical: 10 },
   card: { flex: 1, padding: 10, backgroundColor: '#f5f5f5', margin: 5, borderRadius: 8 },
   image: { width: '100%', height: 100, resizeMode: 'cover', borderRadius: 4 },
@@ -371,7 +420,7 @@ const styles = StyleSheet.create({
   botoesCard: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
   botaoEditar: { backgroundColor: 'blue', padding: 5, borderRadius: 5 },
   botaoExcluir: { backgroundColor: 'red', padding: 5, borderRadius: 5 },
-  textoBotao: { color: 'white' },
+  textoBotao: { color: 'black' },
   semImagem: { fontStyle: 'italic', textAlign: 'center' },
   semProdutos: { textAlign: 'center', marginTop: 20, fontStyle: 'italic' },
   titulo: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginVertical: 10 },
