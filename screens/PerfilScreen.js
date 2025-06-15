@@ -25,9 +25,12 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
 } from "firebase/auth";
+import * as ImagePicker from 'expo-image-picker';
+import * as MediaLibrary from "expo-media-library";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
 import { Avatar, IconButton, Appbar } from "react-native-paper";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 export default function PerfilScreen() {
@@ -49,10 +52,52 @@ export default function PerfilScreen() {
   const [estado, setEstado] = useState("");
   const [tipo, setTipo] = useState("");
   const [empresa, setEmpresa] = useState("");
+  const [fotoLocal, setFotoLocal] = useState(null);
+  const [fotoAlterada, setFotoAlterada] = useState(false);
+
 
   const navigation = useNavigation();
   const _goBack = () => {
     navigation.goBack();
+  };
+  const escolherImagem = async () => {
+    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+    const { status: galeriaStatus } = await MediaLibrary.requestPermissionsAsync();
+  
+    if (cameraStatus !== "granted" || galeriaStatus !== "granted") {
+      Alert.alert("Permissão necessária", "É preciso permitir o acesso à câmera e à galeria.");
+      return;
+    }
+  
+    const resultado = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+  
+    if (!resultado.canceled) {
+      setFotoLocal(resultado.assets[0].uri);
+      setFotoAlterada(true);
+    }
+  };
+  const salvarFotoPerfil = async () => {
+    try {
+      if (!usuario?.uid || !fotoLocal) return;
+  
+      // 1. Salva localmente
+      await AsyncStorage.setItem("fotoLocal", fotoLocal);
+  
+      // 2. Atualiza no Firestore
+      const userRef = doc(db, "usuarios", usuario.uid);
+      await updateDoc(userRef, { fotoLocal });
+  
+      Alert.alert("Sucesso", "Foto atualizada com sucesso!");
+      setFotoAlterada(false);
+    } catch (error) {
+      console.error("Erro ao salvar foto:", error);
+      Alert.alert("Erro", "Não foi possível salvar a foto.");
+    }
   };
 
   useEffect(() => {
@@ -76,6 +121,7 @@ export default function PerfilScreen() {
           setEstado(dados.estado || "");
           setTipo(dados.tipo || "");
           setEmpresa(dados.empresa || "");
+          setFotoLocal(dados.fotoLocal || null); // ✅ Aqui carrega a imagem salva
         }
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
@@ -135,6 +181,7 @@ export default function PerfilScreen() {
         estado,
         tipo,
         empresa,
+        fotoLocal: fotoLocal || ""
       });
 
       setEditando(false);
@@ -194,6 +241,7 @@ export default function PerfilScreen() {
   }
 
   if (!usuario) return <Text>Usuário não encontrado</Text>;
+  
 
   return (
     <KeyboardAvoidingView
@@ -303,10 +351,18 @@ export default function PerfilScreen() {
                   alignItems: "center",
                 }}
               >
-                <Avatar.Image
-                  size={160} // menor que 180
-                  source={require("../img/frutigoprofile.png")}
-                />
+               <TouchableOpacity onPress={editando ? escolherImagem : null}>
+  <Image
+    source={
+      fotoLocal
+        ? { uri: fotoLocal }
+        : require("../img/frutigoprofile.png")
+    }
+    style={{ width: 170, height: 170, borderRadius: 85 , size: 160 }}
+  />
+</TouchableOpacity>
+
+
                 <TouchableOpacity
                   style={{
                     position: "absolute",
