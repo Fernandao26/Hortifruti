@@ -12,12 +12,17 @@ import {
   Platform,
   TouchableOpacity,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import { wp, hp } from "../src/utils/responsive";
 
 export default function RedefinirSenha({ navigation }) {
   const [email, setEmail] = useState("");
+
+  const _goBack = () => {
+    navigation.goBack();
+  };
 
   const handleResetPassword = async () => {
     if (!email) {
@@ -33,10 +38,6 @@ export default function RedefinirSenha({ navigation }) {
       console.log(error);
       Alert.alert("Erro", "Falha ao enviar email");
     }
-    const navigation = useNavigation();
-    const _goBack = () => {
-      navigation.goBack();
-    };
   };
 
   return (
@@ -54,7 +55,24 @@ export default function RedefinirSenha({ navigation }) {
             source={require("../img/back.png")}
             style={styles.background}
           />
-
+          <TouchableOpacity
+            onPress={_goBack}
+            style={{
+              position: "absolute",
+              top: hp("8%"),
+              left: wp("10%"),
+              zIndex: 10,
+            }}
+          >
+            <Image
+              source={require("../img/Left.png")}
+              style={{
+                width: wp("8%"),
+                height: hp("4%"),
+                position: "absolute",
+              }}
+            />
+          </TouchableOpacity>
           <Image
             source={require("../img/redefinirsenha.png")}
             style={styles.imageOverlay}
