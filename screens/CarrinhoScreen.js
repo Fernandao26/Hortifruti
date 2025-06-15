@@ -26,9 +26,10 @@ export default function CarrinhoScreen() {
     if (Array.isArray(carrinhoInicial)) {
       setCarrinho(carrinhoInicial);
     } else {
-      setCarrinho([]); // garante que não vai quebrar
+      setCarrinho([]);
     }
   }, [carrinhoInicial]);
+
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -69,7 +70,7 @@ export default function CarrinhoScreen() {
   const removerItem = (id) => {
     const novoCarrinho = carrinho.filter((item) => item.id !== id);
     setCarrinho(novoCarrinho);
-    atualizarCarrinhoNaHome?.(novoCarrinho); // <-- aqui também
+    atualizarCarrinhoNaHome?.(novoCarrinho);
   };
 
   const renderItem = ({ item }) => {
@@ -80,8 +81,7 @@ export default function CarrinhoScreen() {
         <Image source={{ uri: item.imagem }} style={styles.imagem} />
         <View style={styles.infoContainer}>
           <Text style={styles.nome}>{item.nome}</Text>
-          <Text>Preço un: R$ {item.preco.toFixed(2)}</Text>
-
+          <Text style={styles.preco}>Preço un: R$ {item.preco.toFixed(2)}</Text>
           <View style={styles.qtdContainer}>
             <TouchableOpacity
               style={styles.qtdButton}
@@ -89,14 +89,16 @@ export default function CarrinhoScreen() {
             >
               <Text style={styles.qtdButtonText}>-</Text>
             </TouchableOpacity>
-
             <Text style={styles.qtdTexto}>{item.quantidade}</Text>
-
             <Text style={styles.estoqueInfo}>/ {item.estoque}</Text>
+            <TouchableOpacity
+              style={styles.qtdButton}
+              onPress={() => alterarQuantidade(item.id, "mais")}
+            >
+              <Text style={styles.qtdButtonText}>+</Text>
+            </TouchableOpacity>
           </View>
-
           <Text style={styles.total}>Total: R$ {total}</Text>
-
           <TouchableOpacity
             onPress={() => removerItem(item.id)}
             style={styles.removerBotao}
@@ -112,26 +114,13 @@ export default function CarrinhoScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Image
-            source={require("../img/Left2.png")} // use o ícone da seta verde
-            style={styles.backIcon}
-          />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Carrinho</Text>
-        <TouchableOpacity onPress={() => {}}>
-          <Image
-            source={require("../img/Edit1.png")} // use o ícone de lápis
-            style={styles.editIcon}
-          />
-        </TouchableOpacity>
-      </View>
+      <Text style={styles.title}>Carrinho</Text>
       {carrinho.length > 0 ? (
         <FlatList
           data={carrinho}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: hp("10%") }}
         />
       ) : (
         <Text style={styles.vazio}>Carrinho vazio</Text>
@@ -154,105 +143,89 @@ export default function CarrinhoScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: hp("4%"),
-    paddingHorizontal: wp("4%"),
-  },
-  headerTitle: {
-    fontSize: hp("3%"),
-    fontWeight: "bold",
-    alignSelf: "flex-start",
-  },
-  backIcon: {
-    width: wp("6%"),
-    height: wp("6%"),
-  },
-  editIcon: {
-    width: wp("6%"),
-    height: wp("6%"),
-  },
-  container: { flex: 1, padding: 16 },
-  title: { fontSize: 24, fontWeight: "bold", marginBottom: 16 },
+  container: { flex: 1, padding: wp("4%") },
+  title: { fontSize: hp("3%"), fontWeight: "bold", marginBottom: hp("2%") },
   itemContainer: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderColor: "#ccc",
-    paddingVertical: 12,
+    paddingVertical: hp("2%"),
     alignItems: "center",
   },
   imagem: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: 12,
+    width: wp("18%"),
+    height: wp("18%"),
+    borderRadius: wp("2%"),
+    marginRight: wp("4%"),
     backgroundColor: "#eee",
   },
   infoContainer: { flex: 1 },
-  nome: { fontSize: 18, fontWeight: "bold" },
-  total: { fontWeight: "bold", marginTop: 4 },
-  vazio: { fontSize: 16, color: "gray", textAlign: "center", marginTop: 20 },
-
+  nome: { fontSize: hp("2.2%"), fontWeight: "bold" },
+  preco: { fontSize: hp("1.8%"), marginTop: hp("0.5%") },
+  total: { fontWeight: "bold", marginTop: hp("1%"), fontSize: hp("2%") },
+  vazio: {
+    fontSize: hp("2%"),
+    color: "gray",
+    textAlign: "center",
+    marginTop: hp("3%"),
+  },
   qtdContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 6,
-    gap: 8,
+    marginTop: hp("1%"),
+    gap: wp("2%"),
   },
   qtdButton: {
     backgroundColor: "#ccc",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingHorizontal: wp("3%"),
+    paddingVertical: hp("0.5%"),
+    borderRadius: wp("2%"),
   },
   qtdButtonText: {
-    fontSize: 18,
+    fontSize: hp("2.5%"),
     fontWeight: "bold",
   },
   qtdTexto: {
-    fontSize: 16,
-    width: 30,
+    fontSize: hp("2%"),
+    width: wp("8%"),
     textAlign: "center",
     fontWeight: "bold",
   },
   estoqueInfo: {
     color: "gray",
-    fontSize: 14,
+    fontSize: hp("1.8%"),
   },
-
   removerBotao: {
-    marginTop: 6,
+    marginTop: hp("1%"),
     backgroundColor: "#e74c3c",
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+    paddingVertical: hp("1%"),
+    paddingHorizontal: wp("3%"),
+    borderRadius: wp("2%"),
     alignSelf: "flex-start",
   },
   removerTexto: {
     color: "#fff",
     fontWeight: "bold",
+    fontSize: hp("1.8%"),
   },
-
   totalContainer: {
-    marginTop: 20,
+    marginTop: hp("2%"),
     alignItems: "center",
   },
   totalText: {
-    fontSize: 17,
+    fontSize: hp("2.2%"),
     fontWeight: "bold",
   },
   button: {
     backgroundColor: "#4CAF50",
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 20,
+    paddingVertical: hp("1.8%"),
+    borderRadius: wp("2%"),
+    marginTop: hp("2%"),
     alignItems: "center",
   },
   buttonText: {
     color: "#fff",
-    fontSize: 18,
+    fontSize: hp("2.2%"),
     fontWeight: "bold",
   },
 });
