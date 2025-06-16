@@ -432,25 +432,7 @@ export default function FornecedorScreen() {
           </TouchableOpacity>
         );
       })}
-    </View>
-
-    {/* Filtro visual para tipo de estoque */}
-    <Text style={styles.label}>Tipo de Estoque:</Text>
-    <View style={styles.filtroWrapper}>
-      {["unidade", "kg", "dúzia"].map((tipo) => {
-        const ativo = tipoEstoque === tipo;
-        return (
-          <TouchableOpacity
-            key={tipo}
-            style={[styles.botaoFiltro, ativo && styles.botaoAtivo]}
-            onPress={() => setTipoEstoque(tipo)}
-          >
-            <Text style={ativo ? styles.textoAtivo : styles.textoFiltro}>
-              {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
+   
     </View>
 
     <TouchableOpacity

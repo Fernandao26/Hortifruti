@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,11 +10,7 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
-import {
-  useRoute,
-  useNavigation,
-  useFocusEffect,
-} from "@react-navigation/native";
+import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native";
 import { auth, db } from "../firebaseConfig";
 import {
   doc,
@@ -49,19 +45,21 @@ export default function CarrinhoScreen() {
   const [freteCalculado, setFreteCalculado] = useState(10); // valor inicial
   const [enderecosSalvos, setEnderecosSalvos] = useState([]);
   const [enderecoSelecionado, setEnderecoSelecionado] = useState(null);
+
   const CEP_LOJA = "12507050";
+
   function estimarDistanciaPorCep(CEP_LOJA, cepCliente) {
     const cepLojaNum = parseInt(CEP_LOJA.substring(0, 5));
     const cepClienteNum = parseInt(cepCliente.substring(0, 5));
     const diferenca = Math.abs(cepLojaNum - cepClienteNum);
-
-    // cada 10 unidades de diferença = ~1 km
     return diferenca / 10;
   }
+
   function calcularFretePorDistancia(distanciaKm) {
     if (distanciaKm < 4) return 0;
     return Math.ceil((distanciaKm - 4) / 4) * 10;
   }
+
   const buscarEnderecosDoUsuario = async () => {
     try {
       const uid = auth.currentUser.uid;
@@ -73,6 +71,7 @@ export default function CarrinhoScreen() {
       console.error("Erro ao buscar endereços:", err);
     }
   };
+
   const agruparPorFornecedor = (itens) => {
     return itens.reduce((acc, item) => {
       const fornecedor = item.fornecedor || "Desconhecido";
@@ -92,12 +91,10 @@ export default function CarrinhoScreen() {
     }
   }, [JSON.stringify(carrinhoInicial)]);
 
-  // 🔁 Atualizar agrupado quando carrinho mudar
   useEffect(() => {
     setCarrinhoAgrupado(agruparPorFornecedor(carrinho));
   }, [carrinho]);
 
-  // Atualiza carrinho na Home ao sair da tela
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -135,7 +132,8 @@ export default function CarrinhoScreen() {
       setBairroInput(data.bairro || "");
       setCidadeInput(data.localidade || "");
       setEstadoInput(data.uf || "");
-      const distanciaEstimada = estimarDistanciaPorCep("12502050", cepDigitado);
+
+      const distanciaEstimada = estimarDistanciaPorCep(CEP_LOJA, cepDigitado);
       const frete = calcularFretePorDistancia(distanciaEstimada);
       setFreteCalculado(frete);
     } catch (err) {
@@ -169,6 +167,7 @@ export default function CarrinhoScreen() {
       Alert.alert("Erro ao salvar endereço");
     }
   };
+
   const selecionarEndereco = (end) => {
     setEnderecoUser(end.endereco);
     setNumeroUser(end.numero);
@@ -182,6 +181,7 @@ export default function CarrinhoScreen() {
     const frete = calcularFretePorDistancia(distanciaEstimada);
     setFreteCalculado(frete);
   };
+
   const removerEndereco = async (id) => {
     try {
       await deleteDoc(doc(db, "enderecos", id));
@@ -191,6 +191,7 @@ export default function CarrinhoScreen() {
       Alert.alert("Erro ao remover endereço");
     }
   };
+
   const calcularTotalCarrinho = () =>
     carrinho.reduce((sum, item) => sum + item.preco * item.quantidade, 0);
 
@@ -214,7 +215,7 @@ export default function CarrinhoScreen() {
   };
 
   const renderItem = ({ item }) => (
-    <View style={styles.itemContainer}>
+    <View key={item.id} style={styles.itemContainer}>
       <Image source={{ uri: item.imagem }} style={styles.imagem} />
       <View style={styles.infoContainer}>
         <Text style={styles.nome}>{item.nome}</Text>
@@ -243,320 +244,183 @@ export default function CarrinhoScreen() {
           onPress={() => removerItem(item.id)}
           style={styles.removerButton}
         >
-          <Text style={styles.removerTexto}>Remover</Text>
+          <Text style={styles.removerTexto}>🗑️ Remover</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 
-  <ScrollView contentContainerStyle={styles.container}>
-    <Text style={styles.title}>Endereço de Entrega</Text>
-    {enderecosSalvos.length > 0 && (
-      <>
-        {enderecosSalvos.map((end) => (
-          <View
-            key={end.id}
-            style={{
-              padding: 8,
-              borderWidth: 1,
-              borderColor:
-                enderecoSelecionado?.id === end.id ? "#4CAF50" : "#ccc",
-              borderRadius: 6,
-              marginBottom: 6,
-            }}
-          >
-            <Text>
-              {end.endereco}, {end.numero} - {end.bairro}
-            </Text>
-            <Text>
-              {end.cidade} - {end.estado}, CEP {end.cep}
-            </Text>
-            <View style={{ flexDirection: "row", marginTop: 8, gap: 8 }}>
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      {/* Seção de Endereço */}
+      <Text style={styles.title}>Endereço de Entrega</Text>
+      {enderecosSalvos.length > 0 &&
+        enderecosSalvos.map((end) => (
+          <View key={end.id} style={styles.enderecoCard}>
+            <Text>{`${end.endereco}, ${end.numero} - ${end.bairro}`}</Text>
+            <Text>{`${end.cidade} - ${end.estado}, CEP ${end.cep}`}</Text>
+            <View style={styles.enderecoActions}>
               <TouchableOpacity
                 onPress={() => selecionarEndereco(end)}
-                style={{
-                  backgroundColor: "#4CAF50",
-                  padding: 6,
-                  borderRadius: 4,
-                  flex: 1,
-                }}
+                style={styles.usarBtn}
               >
-                <Text style={{ color: "#fff", textAlign: "center" }}>
-                  Usar este endereço
-                </Text>
+                <Text style={styles.btnText}>Usar este endereço</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 onPress={() => removerEndereco(end.id)}
-                style={{
-                  backgroundColor: "#e74c3c",
-                  padding: 6,
-                  borderRadius: 4,
-                  flex: 1,
-                }}
+                style={styles.apagarBtn}
               >
-                <Text style={{ color: "#fff", textAlign: "center" }}>
-                  Apagar
-                </Text>
+                <Text style={styles.btnText}>Apagar</Text>
               </TouchableOpacity>
             </View>
           </View>
         ))}
-      </>
-    )}
-    {!editandoEndereco ? (
-      <>
-        <Text>
-          {enderecoUser} {numeroUser}
-        </Text>
-        <Text>{bairroUser}</Text>
-        <TouchableOpacity onPress={() => setEditandoEndereco(true)}>
-          <Text style={styles.editarEndereco}>Adicionar Novo Endereço</Text>
-        </TouchableOpacity>
-      </>
-    ) : (
-      <>
-        <TextInput
-          placeholder="CEP"
-          style={styles.input}
-          value={cep}
-          keyboardType="numeric"
-          onChangeText={(value) => {
-            setCep(value);
-            if (value.length === 8) buscarEnderecoPorCEP(value);
-          }}
-        />
-        <TextInput
-          placeholder="Número"
-          style={styles.input}
-          value={numeroInput}
-          onChangeText={setNumeroInput}
-        />
-        <TextInput
-          placeholder="Rua"
-          style={styles.input}
-          value={enderecoInput}
-          editable={false}
-        />
-        <TextInput
-          placeholder="Bairro"
-          style={styles.input}
-          value={bairroInput}
-          editable={false}
-        />
-        <TextInput
-          placeholder="Cidade"
-          style={styles.input}
-          value={cidadeInput}
-          editable={false}
-        />
-        <TextInput
-          placeholder="Estado"
-          style={styles.input}
-          value={estadoInput}
-          editable={false}
-        />
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            gap: 12,
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => setEditandoEndereco(false)}
-            style={[styles.button, { flex: 1, backgroundColor: "#aaa" }]}
-          >
-            <Text style={styles.buttonText}>Voltar</Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={salvarEndereco}
-            style={[styles.button, { flex: 1 }]}
-          >
-            <Text style={styles.buttonText}>Salvar Endereço</Text>
+      {!editandoEndereco ? (
+        <>
+          <Text>{`${enderecoUser} ${numeroUser}`}</Text>
+          <Text>{bairroUser}</Text>
+          <TouchableOpacity onPress={() => setEditandoEndereco(true)}>
+            <Text style={styles.editarEndereco}>Adicionar Novo Endereço</Text>
           </TouchableOpacity>
+        </>
+      ) : (
+        <>
+          <TextInput
+            placeholder="CEP"
+            style={styles.input}
+            value={cep}
+            keyboardType="numeric"
+            onChangeText={(value) => {
+              setCep(value);
+              if (value.length === 8) buscarEnderecoPorCEP(value);
+            }}
+          />
+          <TextInput
+            placeholder="Número"
+            style={styles.input}
+            value={numeroInput}
+            onChangeText={setNumeroInput}
+          />
+          <TextInput
+            placeholder="Rua"
+            style={styles.input}
+            value={enderecoInput}
+            editable={false}
+          />
+          <TextInput
+            placeholder="Bairro"
+            style={styles.input}
+            value={bairroInput}
+            editable={false}
+          />
+          <TextInput
+            placeholder="Cidade"
+            style={styles.input}
+            value={cidadeInput}
+            editable={false}
+          />
+          <TextInput
+            placeholder="Estado"
+            style={styles.input}
+            value={estadoInput}
+            editable={false}
+          />
+
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              onPress={() => setEditandoEndereco(false)}
+              style={[styles.button, { backgroundColor: "#aaa" }]}
+            >
+              <Text style={styles.buttonText}>Voltar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={salvarEndereco}
+              style={styles.button}
+            >
+              <Text style={styles.buttonText}>Salvar Endereço</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+
+      {/* Lista de Produtos por Fornecedor */}
+      {Object.entries(carrinhoAgrupado).map(([fornecedor, itens]) => (
+        <View key={fornecedor} style={styles.fornecedorGroup}>
+          <Text style={styles.fornecedorTitle}>🧺 Fornecedor: {fornecedor}</Text>
+          {itens.map((item) => renderItem({ item }))}
         </View>
-      </>
-    )}
-    return(
-    {Object.entries(carrinhoAgrupado).map(([fornecedor, itens]) => (
-      <View key={fornecedor} style={{ marginBottom: 20 }}>
-        <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 8 }}>
-          🧺 Fornecedor: {fornecedor}
-        </Text>
+      ))}
 
-        {itens.map((item) => (
-          <View key={item.id} style={styles.itemContainer}>
-            <Image source={{ uri: item.imagem }} style={styles.imagem} />
-            <View style={styles.infoContainer}>
-              <Text style={styles.nome}>{item.nome}</Text>
-              <Text>Preço un: R$ {item.preco.toFixed(2)}</Text>
+      {/* Resumo do Carrinho */}
+      <View style={styles.resumoContainer}>
+        <Text style={styles.resumoLabel}>Subtotal:</Text>
+        <Text style={styles.resumoValor}>R$ {totalProdutos.toFixed(2)}</Text>
 
-              <View style={styles.qtdContainer}>
-                <TouchableOpacity
-                  onPress={() => alterarQuantidade(item.id, "menos")}
-                  style={styles.qtdButton}
-                >
-                  <Text>-</Text>
-                </TouchableOpacity>
-                <Text style={styles.qtdTexto}>{item.quantidade}</Text>
-                <TouchableOpacity
-                  onPress={() => alterarQuantidade(item.id, "mais")}
-                  style={styles.qtdButton}
-                >
-                  <Text>+</Text>
-                </TouchableOpacity>
-              </View>
+        <Text style={styles.resumoLabel}>Frete:</Text>
+        <Text style={styles.resumoValor}>R$ {freteCalculado.toFixed(2)}</Text>
 
-              <Text>Total: R$ {(item.preco * item.quantidade).toFixed(2)}</Text>
-
-              <TouchableOpacity
-                onPress={() => removerItem(item.id)}
-                style={styles.removerButton}
-              >
-                <Text style={styles.removerTexto}>🗑️ Remover</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
+        <Text style={styles.resumoLabel}>Total:</Text>
+        <Text style={styles.resumoValor}>R$ {totalComFrete}</Text>
       </View>
-    ))}{" "}
-    );
-    <View style={styles.totalContainer}>
-      <Text style={styles.totalText}>
-        Produtos: R$ {totalProdutos.toFixed(2)}
-      </Text>
-      <Text style={styles.totalText}>
-        Frete: R$ {freteCalculado.toFixed(2)}
-      </Text>
-      <Text style={styles.totalText}>Total: R$ {totalComFrete}</Text>
-    </View>
-    {carrinho.length > 0 && (
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate("Pagamento", { carrinho })}
-      >
-        <Text style={styles.buttonText}>Ir para Pagamento</Text>
-      </TouchableOpacity>
-    )}
-  </ScrollView>;
+
+      {/* Botão Ir para Pagamento */}
+      {carrinho.length > 0 && (
+        <TouchableOpacity
+          style={styles.continuarButton}
+          onPress={() => navigation.navigate("Pagamento", { carrinho })}
+        >
+          <Text style={styles.continuarButtonText}>IR PARA PAGAMENTO</Text>
+        </TouchableOpacity>
+      )}
+    </ScrollView>
+  );
 }
 
-// estilos
+// Estilos
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     padding: 16,
+    backgroundColor: "#fff",
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "bold",
     marginBottom: 16,
   },
-  itemContainer: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
+  enderecoCard: {
+    padding: 12,
+    borderWidth: 1,
     borderColor: "#ccc",
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  imagem: {
-    width: 60,
-    height: 60,
     borderRadius: 8,
-    marginRight: 12,
-    backgroundColor: "#eee",
+    marginBottom: 12,
   },
-  infoContainer: {
-    flex: 1,
-  },
-  nome: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  total: {
-    fontWeight: "bold",
-    marginTop: 4,
-  },
-  vazio: {
-    fontSize: 16,
-    color: "gray",
-    textAlign: "center",
-    marginTop: 20,
-  },
-  qtdContainer: {
+  enderecoActions: {
     flexDirection: "row",
-    alignItems: "center",
-    marginTop: 6,
-    gap: 8,
+    justifyContent: "space-between",
+    marginTop: 8,
   },
-  qtdButton: {
-    backgroundColor: "#ccc",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  usarBtn: {
+    flex: 1,
+    marginRight: 6,
+    backgroundColor: "#4CAF50",
+    paddingVertical: 6,
     borderRadius: 4,
   },
-  qtdButtonText: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  qtdTexto: {
-    fontSize: 16,
-    width: 30,
-    textAlign: "center",
-    fontWeight: "bold",
-  },
-  estoqueInfo: {
-    color: "gray",
-    fontSize: 14,
-  },
-  removerBotao: {
-    marginTop: 6,
+  apagarBtn: {
+    flex: 1,
+    marginLeft: 6,
     backgroundColor: "#e74c3c",
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    alignSelf: "flex-start",
+    paddingVertical: 6,
+    borderRadius: 4,
   },
-  removerTexto: {
+  btnText: {
     color: "#fff",
-    fontWeight: "bold",
-  },
-  totalContainer: {
-    marginTop: 20,
-    alignItems: "center",
-  },
-  totalText: {
-    fontSize: 17,
-    fontWeight: "bold",
-  },
-  button: {
-    backgroundColor: "#4CAF50",
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 20,
-    alignItems: "center",
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  enderecoContainer: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 4,
+    textAlign: "center",
   },
   editarEndereco: {
     color: "#007bff",
-    marginTop: 4,
-  },
-  salvarEndereco: {
-    color: "#28a745",
     marginTop: 8,
   },
   input: {
@@ -566,60 +430,104 @@ const styles = StyleSheet.create({
     padding: 8,
     marginVertical: 6,
   },
-  cardItem: {
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    marginTop: 12,
+  },
+  button: {
+    flex: 1,
+    backgroundColor: "#4CAF50",
+    paddingVertical: 10,
+    borderRadius: 4,
+    alignItems: "center",
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  itemContainer: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 12,
-    backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderColor: "#eee",
+    paddingVertical: 12,
+    marginBottom: 12,
   },
-  imagemProduto: {
-    width: 55,
-    height: 55,
+  imagem: {
+    width: 60,
+    height: 60,
     borderRadius: 8,
-    marginRight: 10,
-    backgroundColor: "#eee",
+    marginRight: 12,
   },
-  infoProduto: {
+  infoContainer: {
     flex: 1,
   },
-  nomeProduto: {
+  nome: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "bold",
   },
-  precoProduto: {
-    fontSize: 14,
-    color: "#555",
-  },
-  qtdRow: {
+  qtdContainer: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 6,
   },
-  qtdBtn: {
-    borderRadius: 20,
-    backgroundColor: "#eee",
+  qtdButton: {
     paddingHorizontal: 10,
-    paddingVertical: 2,
-  },
-  qtdBtnTexto: {
-    fontSize: 20,
+    paddingVertical: 4,
+    backgroundColor: "#eee",
+    borderRadius: 4,
   },
   qtdTexto: {
-    fontSize: 16,
-    minWidth: 20,
-    textAlign: "center",
+    marginHorizontal: 8,
+    fontWeight: "bold",
   },
-  btnRemover: {
-    marginLeft: 6,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
+  removerButton: {
+    position: "absolute",
+    right: 8,
+    top: 8,
+    backgroundColor: "#e74c3c",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 4,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    marginRight: 8,
+  },
+  removerTexto: {
+    color: "#fff",
+  },
+  resumoContainer: {
+    marginTop: 20,
+    padding: 16,
+    backgroundColor: "#f9f9f9",
+    borderRadius: 8,
+    elevation: 2,
+  },
+  resumoLabel: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  resumoValor: {
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  continuarButton: {
+    marginTop: 20,
+    backgroundColor: "#4CAF50",
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  continuarButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  fornecedorGroup: {
+    marginBottom: 20,
+  },
+  fornecedorTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 8,
   },
 });
