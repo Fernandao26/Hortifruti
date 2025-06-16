@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: 10,
   },
-  botaoEditar: { backgroundColor: "blue", padding: 5, borderRadius: 5 },
+  botaoEditar: { backgroundColor: 'green', padding: 5, borderRadius: 5 },
   botaoExcluir: { backgroundColor: "red", padding: 5, borderRadius: 5 },
   textoBotao: { color: "white" },
   semImagem: { fontStyle: "italic", textAlign: "center" },
