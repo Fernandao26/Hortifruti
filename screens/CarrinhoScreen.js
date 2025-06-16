@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -35,6 +35,7 @@ export default function CarrinhoScreen() {
   const { carrinho: carrinhoInicial = [], atualizarCarrinhoNaHome } =
     route.params || {};
   const [carrinho, setCarrinho] = useState([]);
+  const [carrinhoAgrupado, setCarrinhoAgrupado] = useState({});
   const [enderecoUser, setEnderecoUser] = useState("");
   const [numeroUser, setNumeroUser] = useState("");
   const [bairroUser, setBairroUser] = useState("");
@@ -82,14 +83,21 @@ export default function CarrinhoScreen() {
       return acc;
     }, {});
   };
-  const carrinhoAgrupado = agruparPorFornecedor(carrinho);
+
   useEffect(() => {
     buscarEnderecosDoUsuario();
     if (Array.isArray(carrinhoInicial)) {
       setCarrinho([...carrinhoInicial]);
+      setCarrinhoAgrupado(agruparPorFornecedor(carrinhoInicial));
     }
   }, [JSON.stringify(carrinhoInicial)]);
 
+  // 🔁 Atualizar agrupado quando carrinho mudar
+  useEffect(() => {
+    setCarrinhoAgrupado(agruparPorFornecedor(carrinho));
+  }, [carrinho]);
+
+  // Atualiza carrinho na Home ao sair da tela
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -241,218 +249,198 @@ export default function CarrinhoScreen() {
     </View>
   );
 
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Endereço de Entrega</Text>
-      {enderecosSalvos.length > 0 && (
-        <>
-          {enderecosSalvos.map((end) => (
-            <View
-              key={end.id}
-              style={{
-                padding: 8,
-                borderWidth: 1,
-                borderColor:
-                  enderecoSelecionado?.id === end.id ? "#4CAF50" : "#ccc",
-                borderRadius: 6,
-                marginBottom: 6,
-              }}
-            >
-              <Text>
-                {end.endereco}, {end.numero} - {end.bairro}
-              </Text>
-              <Text>
-                {end.cidade} - {end.estado}, CEP {end.cep}
-              </Text>
-              <View style={{ flexDirection: "row", marginTop: 8, gap: 8 }}>
-                <TouchableOpacity
-                  onPress={() => selecionarEndereco(end)}
-                  style={{
-                    backgroundColor: "#4CAF50",
-                    padding: 6,
-                    borderRadius: 4,
-                    flex: 1,
-                  }}
-                >
-                  <Text style={{ color: "#fff", textAlign: "center" }}>
-                    Usar este endereço
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => removerEndereco(end.id)}
-                  style={{
-                    backgroundColor: "#e74c3c",
-                    padding: 6,
-                    borderRadius: 4,
-                    flex: 1,
-                  }}
-                >
-                  <Text style={{ color: "#fff", textAlign: "center" }}>
-                    Apagar
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </>
-      )}
-      {!editandoEndereco ? (
-        <>
-          <Text>
-            {enderecoUser} {numeroUser}
-          </Text>
-          <Text>{bairroUser}</Text>
-          <TouchableOpacity onPress={() => setEditandoEndereco(true)}>
-            <Text style={styles.editarEndereco}>Adicionar Novo Endereço</Text>
-          </TouchableOpacity>
-        </>
-      ) : (
-        <>
-          <TextInput
-            placeholder="CEP"
-            style={styles.input}
-            value={cep}
-            keyboardType="numeric"
-            onChangeText={(value) => {
-              setCep(value);
-              if (value.length === 8) buscarEnderecoPorCEP(value);
-            }}
-          />
-          <TextInput
-            placeholder="Número"
-            style={styles.input}
-            value={numeroInput}
-            onChangeText={setNumeroInput}
-          />
-          <TextInput
-            placeholder="Rua"
-            style={styles.input}
-            value={enderecoInput}
-            editable={false}
-          />
-          <TextInput
-            placeholder="Bairro"
-            style={styles.input}
-            value={bairroInput}
-            editable={false}
-          />
-          <TextInput
-            placeholder="Cidade"
-            style={styles.input}
-            value={cidadeInput}
-            editable={false}
-          />
-          <TextInput
-            placeholder="Estado"
-            style={styles.input}
-            value={estadoInput}
-            editable={false}
-          />
+  <ScrollView contentContainerStyle={styles.container}>
+    <Text style={styles.title}>Endereço de Entrega</Text>
+    {enderecosSalvos.length > 0 && (
+      <>
+        {enderecosSalvos.map((end) => (
           <View
+            key={end.id}
             style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              gap: 12,
+              padding: 8,
+              borderWidth: 1,
+              borderColor:
+                enderecoSelecionado?.id === end.id ? "#4CAF50" : "#ccc",
+              borderRadius: 6,
+              marginBottom: 6,
             }}
           >
-            <TouchableOpacity
-              onPress={() => setEditandoEndereco(false)}
-              style={[styles.button, { flex: 1, backgroundColor: "#aaa" }]}
-            >
-              <Text style={styles.buttonText}>Voltar</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={salvarEndereco}
-              style={[styles.button, { flex: 1 }]}
-            >
-              <Text style={styles.buttonText}>Salvar Endereço</Text>
-            </TouchableOpacity>
-          </View>
-        </>
-      )}
-
-      {carrinho.length > 0 ? (
-        <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-          {Object.entries(carrinhoAgrupado).map(([fornecedor, itens]) => (
-            <View key={fornecedor} style={{ marginBottom: 16 }}>
-              <View
+            <Text>
+              {end.endereco}, {end.numero} - {end.bairro}
+            </Text>
+            <Text>
+              {end.cidade} - {end.estado}, CEP {end.cep}
+            </Text>
+            <View style={{ flexDirection: "row", marginTop: 8, gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => selecionarEndereco(end)}
                 style={{
-                  padding: 8,
-                  backgroundColor: "#eee",
-                  borderTopLeftRadius: 8,
-                  borderTopRightRadius: 8,
+                  backgroundColor: "#4CAF50",
+                  padding: 6,
+                  borderRadius: 4,
+                  flex: 1,
                 }}
               >
-                <Text style={{ fontWeight: "bold", color: "#4CAF50" }}>
-                  📦 Fornecedor:{" "}
-                  <Text style={{ fontWeight: "normal" }}>{fornecedor}</Text>
+                <Text style={{ color: "#fff", textAlign: "center" }}>
+                  Usar este endereço
                 </Text>
-              </View>
-              {itens.map((item) => (
-                <View key={item.id} style={styles.cardItem}>
-                  <TouchableOpacity style={styles.checkbox} />
-                  <Image
-                    source={{ uri: item.imagem }}
-                    style={styles.imagemProduto}
-                  />
-                  <View style={styles.infoProduto}>
-                    <Text style={styles.nomeProduto}>{item.nome}</Text>
-                    <Text style={styles.precoProduto}>
-                      Preço un: R$ {item.preco.toFixed(2)}
-                    </Text>
-                    <View style={styles.qtdRow}>
-                      <TouchableOpacity
-                        onPress={() => alterarQuantidade(item.id, "menos")}
-                        style={styles.qtdBtn}
-                      >
-                        <Text style={styles.qtdBtnTexto}>–</Text>
-                      </TouchableOpacity>
-                      <Text style={styles.qtdTexto}>{item.quantidade}</Text>
-                      <TouchableOpacity
-                        onPress={() => alterarQuantidade(item.id, "mais")}
-                        style={styles.qtdBtn}
-                      >
-                        <Text style={styles.qtdBtnTexto}>+</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => removerItem(item.id)}
-                    style={styles.btnRemover}
-                  >
-                    <Text style={styles.qtdBtnTexto}>🗑️</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => removerEndereco(end.id)}
+                style={{
+                  backgroundColor: "#e74c3c",
+                  padding: 6,
+                  borderRadius: 4,
+                  flex: 1,
+                }}
+              >
+                <Text style={{ color: "#fff", textAlign: "center" }}>
+                  Apagar
+                </Text>
+              </TouchableOpacity>
             </View>
-          ))}
-        </ScrollView>
-      ) : (
-        <Text style={styles.empty}>Carrinho vazio</Text>
-      )}
-
-      <View style={styles.totalContainer}>
-        <Text style={styles.totalText}>
-          Produtos: R$ {totalProdutos.toFixed(2)}
+          </View>
+        ))}
+      </>
+    )}
+    {!editandoEndereco ? (
+      <>
+        <Text>
+          {enderecoUser} {numeroUser}
         </Text>
-        <Text style={styles.totalText}>
-          Frete: R$ {freteCalculado.toFixed(2)}
-        </Text>
-        <Text style={styles.totalText}>Total: R$ {totalComFrete}</Text>
-      </View>
-
-      {carrinho.length > 0 && (
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.navigate("Pagamento", { carrinho })}
-        >
-          <Text style={styles.buttonText}>Ir para Pagamento</Text>
+        <Text>{bairroUser}</Text>
+        <TouchableOpacity onPress={() => setEditandoEndereco(true)}>
+          <Text style={styles.editarEndereco}>Adicionar Novo Endereço</Text>
         </TouchableOpacity>
-      )}
-    </ScrollView>
-  );
+      </>
+    ) : (
+      <>
+        <TextInput
+          placeholder="CEP"
+          style={styles.input}
+          value={cep}
+          keyboardType="numeric"
+          onChangeText={(value) => {
+            setCep(value);
+            if (value.length === 8) buscarEnderecoPorCEP(value);
+          }}
+        />
+        <TextInput
+          placeholder="Número"
+          style={styles.input}
+          value={numeroInput}
+          onChangeText={setNumeroInput}
+        />
+        <TextInput
+          placeholder="Rua"
+          style={styles.input}
+          value={enderecoInput}
+          editable={false}
+        />
+        <TextInput
+          placeholder="Bairro"
+          style={styles.input}
+          value={bairroInput}
+          editable={false}
+        />
+        <TextInput
+          placeholder="Cidade"
+          style={styles.input}
+          value={cidadeInput}
+          editable={false}
+        />
+        <TextInput
+          placeholder="Estado"
+          style={styles.input}
+          value={estadoInput}
+          editable={false}
+        />
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => setEditandoEndereco(false)}
+            style={[styles.button, { flex: 1, backgroundColor: "#aaa" }]}
+          >
+            <Text style={styles.buttonText}>Voltar</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={salvarEndereco}
+            style={[styles.button, { flex: 1 }]}
+          >
+            <Text style={styles.buttonText}>Salvar Endereço</Text>
+          </TouchableOpacity>
+        </View>
+      </>
+    )}
+    return(
+    {Object.entries(carrinhoAgrupado).map(([fornecedor, itens]) => (
+      <View key={fornecedor} style={{ marginBottom: 20 }}>
+        <Text style={{ fontSize: 18, fontWeight: "bold", marginBottom: 8 }}>
+          🧺 Fornecedor: {fornecedor}
+        </Text>
+
+        {itens.map((item) => (
+          <View key={item.id} style={styles.itemContainer}>
+            <Image source={{ uri: item.imagem }} style={styles.imagem} />
+            <View style={styles.infoContainer}>
+              <Text style={styles.nome}>{item.nome}</Text>
+              <Text>Preço un: R$ {item.preco.toFixed(2)}</Text>
+
+              <View style={styles.qtdContainer}>
+                <TouchableOpacity
+                  onPress={() => alterarQuantidade(item.id, "menos")}
+                  style={styles.qtdButton}
+                >
+                  <Text>-</Text>
+                </TouchableOpacity>
+                <Text style={styles.qtdTexto}>{item.quantidade}</Text>
+                <TouchableOpacity
+                  onPress={() => alterarQuantidade(item.id, "mais")}
+                  style={styles.qtdButton}
+                >
+                  <Text>+</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text>Total: R$ {(item.preco * item.quantidade).toFixed(2)}</Text>
+
+              <TouchableOpacity
+                onPress={() => removerItem(item.id)}
+                style={styles.removerButton}
+              >
+                <Text style={styles.removerTexto}>🗑️ Remover</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
+      </View>
+    ))}{" "}
+    );
+    <View style={styles.totalContainer}>
+      <Text style={styles.totalText}>
+        Produtos: R$ {totalProdutos.toFixed(2)}
+      </Text>
+      <Text style={styles.totalText}>
+        Frete: R$ {freteCalculado.toFixed(2)}
+      </Text>
+      <Text style={styles.totalText}>Total: R$ {totalComFrete}</Text>
+    </View>
+    {carrinho.length > 0 && (
+      <TouchableOpacity
+        style={styles.button}
+        onPress={() => navigation.navigate("Pagamento", { carrinho })}
+      >
+        <Text style={styles.buttonText}>Ir para Pagamento</Text>
+      </TouchableOpacity>
+    )}
+  </ScrollView>;
 }
 
 // estilos
