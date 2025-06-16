@@ -6,6 +6,8 @@ import {
   FlatList,
   TouchableOpacity,
   StyleSheet,
+  ScrollView,
+  ImageBackground,
 } from "react-native";
 import { collection, getDocs, addDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
@@ -13,6 +15,7 @@ import { Picker } from "@react-native-picker/picker";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { wp, hp } from "../src/utils/responsive";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 export default function HomeScreen() {
   const [produtos, setProdutos] = useState([]);
@@ -99,10 +102,11 @@ export default function HomeScreen() {
     const estoque = item.estoque ?? 0;
 
     return (
-      <View style={styles.cardHorizontal}>
-        <Image
+      <View style={styles.itemContainer}>
+        <ImageBackground
           source={{ uri: item.imagem }}
           style={styles.imagemHorizontal}
+          imageStyle={{ borderRadius: wp(5) }}
           resizeMode="cover"
         />
         <View style={styles.infoContainer}>
@@ -112,30 +116,43 @@ export default function HomeScreen() {
           </Text>
           <Text style={styles.estoque}>Estoque: {estoque}</Text>
 
-          <View style={styles.quantidadeContainer}>
-            <TouchableOpacity
-              onPress={() => atualizarQuantidade(item.id, -1)}
-              style={styles.qtdBtn}
-            >
-              <Text>-</Text>
-            </TouchableOpacity>
-            <Text style={styles.qtdTexto}>{qtd}</Text>
-            <TouchableOpacity
-              onPress={() => {
-                if (qtd < estoque) {
-                  atualizarQuantidade(item.id, 1);
-                } else {
-                  alert(`Limite de estoque atingido (${estoque} unidades)`);
-                }
-              }}
-              style={styles.qtdBtn}
-            >
-              <Text>+</Text>
-            </TouchableOpacity>
+          <View style={styles.quantidadePrecoRow}>
+            <View style={styles.quantidadeContainer}>
+              <TouchableOpacity
+                onPress={() => atualizarQuantidade(item.id, -1)}
+                style={styles.qtdBtn}
+              >
+                <Icon name="minus-circle-outline" size={23} color="#007bff" />
+              </TouchableOpacity>
+
+              <Text style={styles.qtdTexto}>{qtd}</Text>
+
+              <TouchableOpacity
+                onPress={() => {
+                  if (qtd < estoque) {
+                    atualizarQuantidade(item.id, 1);
+                  } else {
+                    alert(`Limite de estoque atingido (${estoque} unidades)`);
+                  }
+                }}
+                style={styles.qtdBtn}
+              >
+                <Icon name="plus-circle-outline" size={23} color="#007bff" />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.preco}>R$ {precoValido.toFixed(2)}/Uni</Text>
           </View>
 
-          <Text style={styles.preco}>R$ {precoValido.toFixed(2)}/Uni</Text>
-          <Text style={styles.total}>Total: R$ {total}</Text>
+          <View style={styles.acaoRow}>
+            <TouchableOpacity
+              style={styles.botaoaddCarrinho}
+              onPress={() => adicionarAoCarrinho(item.id)}
+            >
+              <Text style={styles.botaoTexto}>Comprar</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.total}>Total: R$ {total}</Text>
+          </View>
         </View>
       </View>
     );
@@ -183,14 +200,18 @@ export default function HomeScreen() {
             />
             <View style={styles.iconRow}>
               <TouchableOpacity onPress={() => navigation.navigate("Perfil")}>
-                <Ionicons
-                  name="person-circle-outline"
-                  size={28}
-                  color="green"
+                <Image
+                  source={require("../img/profilehome.png")} // Caminho para sua imagem local
+                  style={{ width: 28, height: 28 }}
+                  resizeMode="contain"
                 />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => navigation.navigate("Carrinho")}>
-                <Ionicons name="cart" size={28} color="green" />
+                <Image
+                  source={require("../img/Cart.png")} // Caminho para sua imagem local
+                  style={{ width: 28, height: 28 }}
+                  resizeMode="contain"
+                />
                 {Object.keys(carrinho).length > 0 && (
                   <View style={styles.badge}>
                     <Text style={styles.badgeText}>
@@ -204,8 +225,25 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.tituloFiltro}>Filtrar por Categoria</Text>
+      <Text style={styles.tituloFiltro}>Filtrar por categoria</Text>
       <View style={styles.filtroWrapper}>
+        <TouchableOpacity
+          onPress={() => setCategoriaSelecionada("")}
+          style={[
+            styles.filtroItem,
+            categoriaSelecionada === "" && styles.filtroItemAtivo,
+          ]}
+        >
+          <Text
+            style={[
+              styles.filtroTexto,
+              categoriaSelecionada === "" && styles.filtroTextoAtivo,
+            ]}
+          >
+            Todos
+          </Text>
+        </TouchableOpacity>
+
         {["Frutas", "Legumes", "Verduras"].map((categoria) => {
           const ativa = categoriaSelecionada === categoria;
           return (
@@ -223,9 +261,30 @@ export default function HomeScreen() {
           );
         })}
       </View>
+      <Text style={styles.tituloFiltro}>Filtrar por Fornecedor</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filtroWrapper}
+        style={{ marginBottom: hp("1%"), height: hp("11%") }}
+      >
+        <TouchableOpacity
+          onPress={() => setFornecedorSelecionado("")}
+          style={[
+            styles.filtroItem,
+            fornecedorSelecionado === "" && styles.filtroItemAtivo,
+          ]}
+        >
+          <Text
+            style={[
+              styles.filtroTexto,
+              fornecedorSelecionado === "" && styles.filtroTextoAtivo,
+            ]}
+          >
+            Todos
+          </Text>
+        </TouchableOpacity>
 
-      <Text style={styles.tituloFiltro}>Filtrar por fornecedor</Text>
-      <View style={styles.filtroWrapper}>
         {fornecedoresUnicos.map((fornecedor, i) => {
           const ativo = fornecedorSelecionado === fornecedor;
           return (
@@ -242,7 +301,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           );
         })}
-      </View>
+      </ScrollView>
 
       <FlatList
         data={produtosFiltrados}
@@ -255,74 +314,107 @@ export default function HomeScreen() {
       {/* Menu inferior */}
       <View style={styles.menuInferior}>
         <TouchableOpacity onPress={() => navigation.navigate("Perfil")}>
-          <Ionicons name="person" size={24} color="green" />
-          <Text style={styles.menuTexto}>Perfil</Text>
+          <Image
+            source={require("../img/profilehomedown.png")} // Caminho para sua imagem local
+            style={{ width: 28, height: 28 }}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.navigate("Receitas")}>
-          <Ionicons name="restaurant" size={24} color="green" />
-          <Text style={styles.menuTexto}>Receitas</Text>
+          <Image
+            source={require("../img/receitas.png")} // Caminho para sua imagem local
+            style={{ width: 28, height: 28 }}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => navigation.navigate("Dicas")}>
-          <Ionicons name="bulb" size={24} color="green" />
-          <Text style={styles.menuTexto}>Dicas</Text>
+          <Image
+            source={require("../img/idea.png")} // Caminho para sua imagem local
+            style={{ width: 28, height: 28 }}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
       </View>
     </View>
   );
+  console.log("Imagem:", item.imagem);
 }
 
 const styles = StyleSheet.create({
   lista: {
-    padding: 7,
+    padding: hp("2%"),
   },
-  card: {
+  itemContainer: {
+    flexDirection: "row",
+    paddingVertical: hp(2), // um pouco mais de espaço
+    paddingHorizontal: wp(1.5),
+    borderBottomWidth: 2,
+    borderColor: "#ddd",
     backgroundColor: "#fff",
-    borderRadius: 10,
-    padding: 6,
-    marginBottom: 14,
-    width: "48%",
-    elevation: 2,
+    // centraliza a imagem com o conteúdo
   },
-  imagem: {
-    width: "100%",
-    height: 90,
-    borderRadius: 8,
-    marginBottom: 8,
-    objectFit: "contain",
+  imagemHorizontal: {
+    width: wp(22),
+    height: wp(22),
+
+    marginRight: wp(3),
   },
-  nome: {
-    fontSize: 16,
-    fontWeight: "bold",
+
+  infoContainer: {
+    flex: 1,
+    justifyContent: "space-between",
   },
-  fornecedor: {
-    fontStyle: "italic",
-    color: "#555",
+
+  quantidadePrecoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: hp(1),
   },
+
   quantidadeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 8,
-    justifyContent: "center",
   },
-  qtdBtn: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 5,
-  },
+
   qtdTexto: {
-    marginHorizontal: 10,
-    fontSize: 16,
-  },
-  total: {
+    marginHorizontal: wp(2),
+    fontSize: hp(1.6),
     fontWeight: "bold",
-    fontSize: 14,
-    marginBottom: 8,
-    textAlign: "center",
   },
+
+  preco: {
+    fontSize: hp(1.8),
+    fontWeight: "bold",
+    color: "#222",
+  },
+
+  total: {
+    fontSize: hp(1.8),
+    fontWeight: "bold",
+    color: "#222",
+    marginTop: hp(0.5),
+    alignSelf: "flex-end",
+  },
+
+  nome: {
+    fontSize: hp(2),
+    fontWeight: "bold",
+  },
+
+  fornecedor: {
+    fontSize: hp(1.5),
+    color: "#666",
+  },
+
+  estoque: {
+    fontSize: hp(1.5),
+    color: "#666",
+    marginBottom: hp(0.3),
+  },
+
   botaoCarrinho: {
     backgroundColor: "green",
     padding: 8,
@@ -333,21 +425,34 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "bold",
   },
-  tituloFiltro: {
-    fontSize: 13,
-    fontWeight: "bold",
-    marginHorizontal: 8,
-    marginTop: 4,
-    color: "#333",
-  },
-  pickerContainer: {
-    marginHorizontal: 5,
+
+  menuInferior: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    paddingVertical: 10,
     backgroundColor: "#fff",
-    borderRadius: 3,
-    borderWidth: 1,
+    borderTopWidth: 1,
     borderColor: "#ccc",
-    overflow: "hidden",
-    marginBottom: 2,
+    marginBottom: hp("5%"),
+  },
+  acaoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: hp(1),
+  },
+
+  botaoaddCarrinho: {
+    backgroundColor: "#007bff",
+    paddingVertical: hp(0.6),
+    paddingHorizontal: wp(4),
+    borderRadius: wp(2),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 3,
   },
   badge: {
     position: "absolute",
@@ -363,112 +468,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "bold",
   },
-  menuInferior: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingVertical: 10,
-    backgroundColor: "#fff",
-    borderTopWidth: 1,
-    borderColor: "#ccc",
-    marginBottom: 40,
+
+  botaoTexto: {
+    color: "#fff",
+    fontSize: hp(1.7),
+    fontWeight: "bold",
+    textAlign: "center",
   },
   menuTexto: {
     fontSize: 12,
     textAlign: "center",
     color: "#333",
   },
-  cardHorizontal: {
-    flexDirection: "row",
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    padding: 10,
-    marginHorizontal: 10,
-    marginBottom: 12,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
-  },
 
-  imagemHorizontal: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    marginRight: 10,
-  },
-
-  infoContainer: {
-    flex: 1,
-  },
-
-  nome: {
-    fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 2,
-  },
-
-  fornecedor: {
-    fontSize: 12,
-    color: "#666",
-  },
-
-  estoque: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 6,
-  },
-
-  quantidadeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-
-  qtdBtn: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 5,
-  },
-
-  qtdTexto: {
-    marginHorizontal: 10,
-    fontSize: 14,
-  },
-
-  preco: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#000",
-  },
-
-  total: {
-    fontSize: 13,
-    fontWeight: "bold",
-    color: "#333",
-    marginTop: 2,
-  },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    paddingTop: wp("6%"),
+    paddingBottom: wp("2%"),
+    width: wp("85%"),
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingTop: 40,
+    justifyContent: "space-between",
   },
   logo: {
-    width: 100,
+    width: wp("20"),
     height: 40,
+    alignSelf: "left",
   },
   iconRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
+    alignItems: "flex-end",
+    marginRight: 10,
+    gap: 7,
   },
   tituloFiltro: {
     fontSize: hp(1.6),
@@ -480,20 +510,24 @@ const styles = StyleSheet.create({
 
   filtroWrapper: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    marginVertical: hp(1),
+    gap: wp(1),
     paddingHorizontal: wp(3),
+    paddingVertical: hp(1),
+    minHeight: hp("5%"), // garante altura mínima
+    alignItems: "flex-start",
+    alignContent: "center",
+
+    // não centraliza verticalmente
   },
 
   filtroItem: {
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: wp(10),
-    paddingVertical: hp(0.8),
+    paddingVertical: hp(0.7),
     paddingHorizontal: wp(4),
     backgroundColor: "#fff",
-    margin: wp(1.2),
+    margin: wp(0.4),
   },
 
   filtroItemAtivo: {
