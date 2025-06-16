@@ -174,9 +174,7 @@ export default function FornecedorScreen() {
   const salvarEdicaoProduto = async () => {  
     try {  
       const imagemURL = await buscarImagemPorNome(nome);  
-      if (!imagemURL) {
-        imagemURL = require('./img/padrao.png'); // ajuste o caminho se necessário
-      }
+    
       const ref = doc(db, "produtos", produtoSelecionado.id);  
       await updateDoc(ref, {  
         nome,  
@@ -355,15 +353,16 @@ export default function FornecedorScreen() {
           </Picker>
 
           <FlatList
-            data={aplicarFiltrosEOrdenacao(produtosVendidos)}
-            keyExtractor={(item) => item.id}
-            numColumns={2}
-            contentContainerStyle={{ padding: 10 }}
-            renderItem={renderCard}
-            ListEmptyComponent={
-              <Text style={styles.semProdutos}>Nenhum produto vendido</Text>
-            }
-          />
+  data={aplicarFiltrosEOrdenacao(produtos)}
+  keyExtractor={(item) => item.id}
+  numColumns={2}
+  contentContainerStyle={{ padding: 10 }}
+  columnWrapperStyle={{ justifyContent: 'space-between' }}
+  renderItem={renderCard}
+  ListEmptyComponent={
+    <Text style={styles.semProdutos}>Nenhum produto</Text>
+  }
+/>
         </>
       )}
 {telaAtual === "cadastro" && (
@@ -552,11 +551,11 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   card: {
-    flex: 1,
-    padding: 10,
-    backgroundColor: "#f5f5f5",
-    margin: 5,
+    width: '48%', // ou um valor fixo como 160
+    margin: '1%',
+    backgroundColor: '#f5f5f5',
     borderRadius: 8,
+    padding: 10,
   },
   image: { width: "100%", height: 100, resizeMode: "cover", borderRadius: 4 },
   nome: { fontWeight: "bold", fontSize: 16 },
