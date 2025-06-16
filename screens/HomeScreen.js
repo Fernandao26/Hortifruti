@@ -23,8 +23,41 @@ export default function HomeScreen() {
   const [fornecedorSelecionado, setFornecedorSelecionado] = useState("");
   const [quantidades, setQuantidades] = useState({});
   const [carrinho, setCarrinho] = useState({});
+  const [fornecedores, setFornecedores] = useState({});
   const navigation = useNavigation();
-
+  useEffect(() => {
+    const fetchDados = async () => {
+      try {
+        // Buscar produtos
+        const querySnapshot = await getDocs(collection(db, "produtos"));
+        const produtosData = querySnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setProdutos(produtosData);
+  
+        // Buscar fornecedores
+        const fornecedoresSnapshot = await getDocs(collection(db, "fornecedores"));
+        const dadosFornecedores = {};
+        fornecedoresSnapshot.forEach((doc) => {
+          const dados = doc.data();
+          dadosFornecedores[dados.email] = dados.empresa;
+        });
+        setFornecedores(dadosFornecedores);
+  
+        // Inicializar quantidades
+        const quantidadesIniciais = {};
+        produtosData.forEach((p) => {
+          quantidadesIniciais[p.id] = 1;
+        });
+        setQuantidades(quantidadesIniciais);
+      } catch (error) {
+        console.error("Erro ao buscar dados:", error);
+      }
+    };
+  
+    fetchDados();
+  }, []);
   useEffect(() => {
     const fetchProdutos = async () => {
       try {
@@ -111,7 +144,8 @@ export default function HomeScreen() {
       typeof item.imagem === "string" && item.imagem.trim() !== ""
         ? item.imagem
         : "https://via.placeholder.com/150";
-
+        console.log("ID do fornecedor:",item.fornecedor);
+        console.log("Nome da empresa:",fornecedores[item.fornecedor]);
     return (
       <View style={styles.itemContainer}>
         <ImageBackground
@@ -123,8 +157,8 @@ export default function HomeScreen() {
         <View style={styles.infoContainer}>
           <Text style={styles.nome}>{item.nome || "Produto sem nome"}</Text>
           <Text style={styles.fornecedor}>
-            Fornecedor: {item.fornecedor || "Não informado"}
-          </Text>
+  Fornecedor: {fornecedores[item.fornecedor] || "Não informado"}
+</Text>
           <Text style={styles.estoque}>Estoque: {estoque}</Text>
 
           <View style={styles.quantidadePrecoRow}>
@@ -303,22 +337,23 @@ export default function HomeScreen() {
           </Text>
         </TouchableOpacity>
 
-        {fornecedoresUnicos.map((fornecedor, i) => {
-          const ativo = fornecedorSelecionado === fornecedor;
-          return (
-            <TouchableOpacity
-              key={i}
-              onPress={() => setFornecedorSelecionado(fornecedor)}
-              style={[styles.filtroItem, ativo && styles.filtroItemAtivo]}
-            >
-              <Text
-                style={[styles.filtroTexto, ativo && styles.filtroTextoAtivo]}
-              >
-                {fornecedor}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        {fornecedoresUnicos.map((email, i) => {
+  const ativo = fornecedorSelecionado === email;
+  const nomeEmpresa = fornecedores[email] || "Fornecedor desconhecido";
+  return (
+    <TouchableOpacity
+      key={i}
+      onPress={() => setFornecedorSelecionado(email)}
+      style={[styles.filtroItem, ativo && styles.filtroItemAtivo]}
+    >
+      <Text
+        style={[styles.filtroTexto, ativo && styles.filtroTextoAtivo]}
+      >
+        {nomeEmpresa}
+      </Text>
+    </TouchableOpacity>
+  );
+})}
       </ScrollView>
 
       <FlatList
