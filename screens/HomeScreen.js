@@ -94,17 +94,22 @@ export default function HomeScreen() {
     }
   };
 
+  // Substitua dentro do renderItem
   const renderItem = ({ item }) => {
-    const qtd = quantidades[item.id] || 1;
-    const precoValido =
-      item.preco && !isNaN(item.preco) ? Number(item.preco) : 0;
+    const qtd = Math.max(1, quantidades[item.id] ?? 1); // Garante quantidade mínima de 1
+    const precoValido = item.preco && !isNaN(item.preco) ? Number(item.preco) : 0;
     const total = (precoValido * qtd).toFixed(2);
     const estoque = item.estoque ?? 0;
-
+  
+    const imagemUri =
+      typeof item.imagem === "string" && item.imagem.trim() !== ""
+        ? item.imagem
+        : "https://via.placeholder.com/150";
+  
     return (
       <View style={styles.itemContainer}>
         <ImageBackground
-          source={{ uri: item.imagem }}
+          source={{ uri: imagemUri }}
           style={styles.imagemHorizontal}
           imageStyle={{ borderRadius: wp(5) }}
           resizeMode="cover"
@@ -115,7 +120,7 @@ export default function HomeScreen() {
             Fornecedor: {item.fornecedor || "Não informado"}
           </Text>
           <Text style={styles.estoque}>Estoque: {estoque}</Text>
-
+  
           <View style={styles.quantidadePrecoRow}>
             <View style={styles.quantidadeContainer}>
               <TouchableOpacity
@@ -124,9 +129,9 @@ export default function HomeScreen() {
               >
                 <Icon name="minus-circle-outline" size={23} color="#007bff" />
               </TouchableOpacity>
-
+  
               <Text style={styles.qtdTexto}>{qtd}</Text>
-
+  
               <TouchableOpacity
                 onPress={() => {
                   if (qtd < estoque) {
@@ -140,17 +145,25 @@ export default function HomeScreen() {
                 <Icon name="plus-circle-outline" size={23} color="#007bff" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.preco}>R$ {precoValido.toFixed(2)}/Uni</Text>
+            <Text style={styles.preco}>
+              R$ {precoValido.toFixed(2)} /{item.tipoPreco || "Unidade"}
+            </Text>
           </View>
-
+  
           <View style={styles.acaoRow}>
             <TouchableOpacity
               style={styles.botaoaddCarrinho}
-              onPress={() => adicionarAoCarrinho(item.id)}
+              onPress={() => { if (qtd <= 0 || isNaN(qtd)) {
+                console.log('Quantidade invalida');
+                Alert.alert("Escolha uma quantidade válida");
+                return;
+              }
+              adicionarAoCarrinho(item.id);
+            }}
             >
               <Text style={styles.botaoTexto}>Comprar</Text>
             </TouchableOpacity>
-
+  
             <Text style={styles.total}>Total: R$ {total}</Text>
           </View>
         </View>
@@ -180,15 +193,7 @@ export default function HomeScreen() {
         <TouchableOpacity
           onPress={() => {
             navigation.navigate("Carrinho", {
-              carrinho: Object.values(carrinho), // transforma objeto em array
-              atualizarCarrinhoNaHome: (novoCarrinhoArray) => {
-                // transforma o array de volta em objeto para salvar
-                const novoObj = {};
-                novoCarrinhoArray.forEach((item) => {
-                  novoObj[item.id] = item;
-                });
-                setCarrinho(novoObj);
-              },
+              carrinho: Object.values(carrinho),
             });
           }}
         >
@@ -197,6 +202,7 @@ export default function HomeScreen() {
               source={require("../img/logo.png")} // substitua pelo seu logo
               style={styles.logo}
               resizeMode="contain"
+              
             />
             <View style={styles.iconRow}>
               <TouchableOpacity onPress={() => navigation.navigate("Perfil")}>

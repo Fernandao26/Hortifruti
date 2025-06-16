@@ -1,231 +1,454 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  Image,
-  TouchableOpacity,
-} from "react-native";
-import {
-  useRoute,
-  useNavigation,
-  useFocusEffect,
-} from "@react-navigation/native";
-import { wp, hp } from "../src/utils/responsive";
+  View, Text, StyleSheet, FlatList, Image, TouchableOpacity,
+  TextInput,ScrollView, Alert
+} from 'react-native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
+import { auth, db } from '../firebaseConfig';
+import { doc, getDoc, updateDoc, addDoc, collection, getDocs, query, where, deleteDoc } from 'firebase/firestore';
+
+
 
 export default function CarrinhoScreen() {
   const route = useRoute();
   const navigation = useNavigation();
 
-  const { carrinho: carrinhoInicial = [], atualizarCarrinhoNaHome } =
-    route.params || {};
+  const { carrinho: carrinhoInicial = [], atualizarCarrinhoNaHome } = route.params || {};
   const [carrinho, setCarrinho] = useState([]);
+  const [enderecoUser, setEnderecoUser] = useState('');
+  const [numeroUser, setNumeroUser] = useState('');
+  const [bairroUser, setBairroUser] = useState('');
+  const [editandoEndereco, setEditandoEndereco] = useState(false);
+  const [enderecoInput, setEnderecoInput] = useState('');
+  const [numeroInput, setNumeroInput] = useState('');
+  const [bairroInput, setBairroInput] = useState('');
+  const [cep, setCep] = useState('');
+const [cidadeInput, setCidadeInput] = useState('');
+const [estadoInput, setEstadoInput] = useState('');
+const [freteCalculado, setFreteCalculado] = useState(10); // valor inicial
+const [enderecosSalvos, setEnderecosSalvos] = useState([]);
+const [enderecoSelecionado, setEnderecoSelecionado] = useState(null);
+const CEP_LOJA = '12507050';
+function estimarDistanciaPorCep(CEP_LOJA, cepCliente) {
+  const cepLojaNum = parseInt(CEP_LOJA.substring(0, 5));
+  const cepClienteNum = parseInt(cepCliente.substring(0, 5));
+  const diferenca = Math.abs(cepLojaNum - cepClienteNum);
 
+  // cada 10 unidades de diferença = ~1 km
+  return diferenca / 10;
+}
+function calcularFretePorDistancia(distanciaKm) {
+  if (distanciaKm < 4) return 0;
+  return Math.ceil((distanciaKm - 4) / 4) * 10;
+}
+const buscarEnderecosDoUsuario = async () => {
+  try {
+    const uid = auth.currentUser.uid;
+    const q = query(collection(db, 'enderecos'), where('uid', '==', uid));
+    const snap = await getDocs(q);
+    const lista = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    setEnderecosSalvos(lista);
+  } catch (err) {
+    console.error('Erro ao buscar endereços:', err);
+  }
+};
   useEffect(() => {
+    buscarEnderecosDoUsuario();
     if (Array.isArray(carrinhoInicial)) {
-      setCarrinho(carrinhoInicial);
-    } else {
-      setCarrinho([]);
+      setCarrinho([...carrinhoInicial]);
     }
-  }, [carrinhoInicial]);
+  }, [JSON.stringify(carrinhoInicial)]);
 
   useFocusEffect(
     useCallback(() => {
       return () => {
-        if (atualizarCarrinhoNaHome) {
-          atualizarCarrinhoNaHome(carrinho);
-        }
+        atualizarCarrinhoNaHome?.(carrinho);
       };
     }, [carrinho])
   );
 
-  const calcularTotalCarrinho = () => {
-    return carrinho
-      .reduce((total, item) => total + item.preco * item.quantidade, 0)
-      .toFixed(2);
+  const fetchEnderecoUsuario = async () => {
+    try {
+      const uid = auth.currentUser.uid;
+      const snap = await getDoc(doc(db, 'users', uid));
+      const data = snap.data() || {};
+      setEnderecoUser(data.endereco || '');
+      setNumeroUser(data.numero || '');
+      setBairroUser(data.bairro || '');
+    } catch (err) {
+      console.error('Erro ao carregar endereço:', err);
+    }
   };
 
-  const alterarQuantidade = (id, operacao) => {
-    const novoCarrinho = carrinho.map((item) => {
+  const buscarEnderecoPorCEP = async (cepDigitado) => {
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cepDigitado}/json/`);
+      const data = await response.json();
+
+      if (data.erro) {
+        Alert.alert('CEP não encontrado');
+        return;
+      }
+
+      setEnderecoInput(data.logradouro || '');
+      setBairroInput(data.bairro || '');
+      setCidadeInput(data.localidade || '');
+      setEstadoInput(data.uf || '');
+      const distanciaEstimada = estimarDistanciaPorCep('12502050', cepDigitado);
+    const frete = calcularFretePorDistancia(distanciaEstimada);
+    setFreteCalculado(frete)
+    } catch (err) {
+      Alert.alert('Erro ao buscar CEP');
+      console.error(err);
+    }
+  };
+
+  const salvarEndereco = async () => {
+    if (!cep || !enderecoInput || !numeroInput || !bairroInput) {
+      return Alert.alert('Preencha todos os campos de endereço');
+    }
+  
+    try {
+      const uid = auth.currentUser.uid;
+      await addDoc(collection(db, 'enderecos'), {
+        uid: uid,
+        cep,
+        endereco: enderecoInput,
+        numero: numeroInput,
+        bairro: bairroInput,
+        cidade: cidadeInput,
+        estado: estadoInput,
+        criadoEm: new Date()
+      });
+  
+      setEditandoEndereco(false);
+      buscarEnderecosDoUsuario(); // atualiza lista
+    } catch (err) {
+      console.error(err);
+      Alert.alert('Erro ao salvar endereço');
+    }
+  };
+  const selecionarEndereco = (end) => {
+    setEnderecoUser(end.endereco);
+    setNumeroUser(end.numero);
+    setBairroUser(end.bairro);
+    setCidadeInput(end.cidade);
+    setEstadoInput(end.estado);
+    setCep(end.cep);
+    setEnderecoSelecionado(end);
+  
+    const distanciaEstimada = estimarDistanciaPorCep(CEP_LOJA, end.cep);
+    const frete = calcularFretePorDistancia(distanciaEstimada);
+    setFreteCalculado(frete);
+  };
+  const removerEndereco = async (id) => {
+    try {
+      await deleteDoc(doc(db, 'enderecos', id));
+      buscarEnderecosDoUsuario(); // atualiza a lista após remover
+    } catch (err) {
+      console.error('Erro ao remover endereço:', err);
+      Alert.alert('Erro ao remover endereço');
+    }
+  };
+  const calcularTotalCarrinho = () =>
+    carrinho.reduce((sum, item) => sum + item.preco * item.quantidade, 0);
+
+  const totalProdutos = calcularTotalCarrinho();
+  const totalComFrete = (totalProdutos + freteCalculado).toFixed(2);
+
+
+  const alterarQuantidade = (id, op) => {
+    const novo = carrinho.map(item => {
       if (item.id === id) {
-        let novaQtd = item.quantidade;
-        const estoqueDisponivel = item.estoque || 99;
-
-        if (operacao === "mais" && novaQtd < estoqueDisponivel) {
-          novaQtd++;
-        } else if (operacao === "menos" && novaQtd > 1) {
-          novaQtd--;
-        }
-
-        return { ...item, quantidade: novaQtd };
+        const qtd = op === 'mais' ? item.quantidade + 1 : item.quantidade - 1;
+        return { ...item, quantidade: Math.max(1, qtd) };
       }
       return item;
     });
-
-    setCarrinho(novoCarrinho);
-    atualizarCarrinhoNaHome?.(novoCarrinho);
+    setCarrinho(novo);
   };
 
   const removerItem = (id) => {
-    const novoCarrinho = carrinho.filter((item) => item.id !== id);
-    setCarrinho(novoCarrinho);
-    atualizarCarrinhoNaHome?.(novoCarrinho);
+    const atualizado = carrinho.filter(item => item.id !== id);
+    setCarrinho(atualizado);
   };
 
-  const renderItem = ({ item }) => {
-    const total = (item.preco * item.quantidade).toFixed(2);
-
-    return (
-      <View style={styles.itemContainer}>
-        <Image source={{ uri: item.imagem }} style={styles.imagem} />
-        <View style={styles.infoContainer}>
-          <Text style={styles.nome}>{item.nome}</Text>
-          <Text style={styles.preco}>Preço un: R$ {item.preco.toFixed(2)}</Text>
-          <View style={styles.qtdContainer}>
-            <TouchableOpacity
-              style={styles.qtdButton}
-              onPress={() => alterarQuantidade(item.id, "menos")}
-            >
-              <Text style={styles.qtdButtonText}>-</Text>
-            </TouchableOpacity>
-            <Text style={styles.qtdTexto}>{item.quantidade}</Text>
-            <Text style={styles.estoqueInfo}>/ {item.estoque}</Text>
-            <TouchableOpacity
-              style={styles.qtdButton}
-              onPress={() => alterarQuantidade(item.id, "mais")}
-            >
-              <Text style={styles.qtdButtonText}>+</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.total}>Total: R$ {total}</Text>
-          <TouchableOpacity
-            onPress={() => removerItem(item.id)}
-            style={styles.removerBotao}
-          >
-            <Text style={styles.removerTexto}>Remover</Text>
+  const renderItem = ({ item }) => (
+    <View style={styles.itemContainer}>
+      <Image source={{ uri: item.imagem }} style={styles.imagem} />
+      <View style={styles.infoContainer}>
+        <Text style={styles.nome}>{item.nome}</Text>
+        <Text>R$ {item.preco.toFixed(2)}</Text>
+        
+        <View style={styles.qtdContainer}>
+          <TouchableOpacity onPress={() => alterarQuantidade(item.id, 'menos')} style={styles.qtdButton}>
+            <Text>-</Text>
+          </TouchableOpacity>
+          <Text style={styles.qtdTexto}>{item.quantidade}</Text>
+          <TouchableOpacity onPress={() => alterarQuantidade(item.id, 'mais')} style={styles.qtdButton}>
+            <Text>+</Text>
           </TouchableOpacity>
         </View>
+  
+        <Text>Total: R$ {(item.preco * item.quantidade).toFixed(2)}</Text>
+  
+        {/* ✅ Botão único de remover */}
+        <TouchableOpacity onPress={() => removerItem(item.id)} style={styles.removerButton}>
+          <Text style={styles.removerTexto}>Remover</Text>
+        </TouchableOpacity>
       </View>
-    );
-  };
-
-  const totalCarrinho = calcularTotalCarrinho();
+    </View>
+  );
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Endereço de Entrega</Text>
+      {enderecosSalvos.length > 0 && (
+  <>
+    {enderecosSalvos.map(end => (
+      <View
+      key={end.id}
+      style={{
+        padding: 8,
+        borderWidth: 1,
+        borderColor: enderecoSelecionado?.id === end.id ? '#4CAF50' : '#ccc',
+        borderRadius: 6,
+        marginBottom: 6,
+      }}
+    >
+      <Text>{end.endereco}, {end.numero} - {end.bairro}</Text>
+      <Text>{end.cidade} - {end.estado}, CEP {end.cep}</Text>
+      <View style={{ flexDirection: 'row', marginTop: 8, gap: 8 }}>
+  <TouchableOpacity
+    onPress={() => selecionarEndereco(end)}
+    style={{ backgroundColor: '#4CAF50', padding: 6, borderRadius: 4, flex: 1 }}
+  >
+    <Text style={{ color: '#fff', textAlign: 'center' }}>Usar este endereço</Text>
+  </TouchableOpacity>
+
+  <TouchableOpacity
+    onPress={() => removerEndereco(end.id)}
+    style={{ backgroundColor: '#e74c3c', padding: 6, borderRadius: 4, flex: 1 }}
+  >
+    <Text style={{ color: '#fff', textAlign: 'center' }}>Apagar</Text>
+  </TouchableOpacity>
+</View>
+
+    </View>
+    ))}
+  </>
+)}
+{!editandoEndereco ? (
+  <>
+    <Text>{enderecoUser}, {numeroUser}</Text>
+    <Text>{bairroUser}</Text>
+    <TouchableOpacity onPress={() => setEditandoEndereco(true)}>
+  <Text style={styles.editarEndereco}>Adicionar Novo Endereço</Text>
+</TouchableOpacity>
+  </>
+) : (
+  <>
+    <TextInput
+      placeholder="CEP"
+      style={styles.input}
+      value={cep}
+      keyboardType="numeric"
+      onChangeText={(value) => {
+        setCep(value);
+        if (value.length === 8) buscarEnderecoPorCEP(value);
+      }}
+    />
+    <TextInput
+      placeholder="Número"
+      style={styles.input}
+      value={numeroInput}
+      onChangeText={setNumeroInput}
+    />
+    <TextInput
+      placeholder="Rua"
+      style={styles.input}
+      value={enderecoInput}
+      editable={false}
+    />
+    <TextInput
+      placeholder="Bairro"
+      style={styles.input}
+      value={bairroInput}
+      editable={false}
+    />
+    <TextInput
+      placeholder="Cidade"
+      style={styles.input}
+      value={cidadeInput}
+      editable={false}
+    />
+    <TextInput
+      placeholder="Estado"
+      style={styles.input}
+      value={estadoInput}
+      editable={false}
+    />
+   <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+  <TouchableOpacity onPress={() => setEditandoEndereco(false)} style={[styles.button, { flex: 1, backgroundColor: '#aaa' }]}>
+    <Text style={styles.buttonText}>Voltar</Text>
+  </TouchableOpacity>
+
+  <TouchableOpacity onPress={salvarEndereco} style={[styles.button, { flex: 1 }]}>
+    <Text style={styles.buttonText}>Salvar Endereço</Text>
+  </TouchableOpacity>
+</View>
+
+  </>
+)}
+
       <Text style={styles.title}>Carrinho</Text>
       {carrinho.length > 0 ? (
-        <FlatList
-          data={carrinho}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          contentContainerStyle={{ paddingBottom: hp("10%") }}
-        />
+        carrinho.map(item => (
+          <View key={item.id}>{renderItem({ item })}</View>
+        ))
       ) : (
-        <Text style={styles.vazio}>Carrinho vazio</Text>
+        <Text style={styles.empty}>Carrinho vazio</Text>
       )}
 
-      <View style={styles.totalContainer}>
-        <Text style={styles.totalText}>Total: R$ {totalCarrinho}</Text>
-      </View>
+<View style={styles.totalContainer}>
+  <Text style={styles.totalText}>Produtos: R$ {totalProdutos.toFixed(2)}</Text>
+  <Text style={styles.totalText}>Frete: R$ {freteCalculado.toFixed(2)}</Text>
+  <Text style={styles.totalText}>Total: R$ {totalComFrete}</Text>
+</View>
 
       {carrinho.length > 0 && (
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate("Pagamento", { carrinho })}
+          onPress={() => navigation.navigate('Pagamento', { carrinho })}
         >
           <Text style={styles.buttonText}>Ir para Pagamento</Text>
         </TouchableOpacity>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
+// estilos
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: wp("4%") },
-  title: { fontSize: hp("3%"), fontWeight: "bold", marginBottom: hp("2%") },
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
   itemContainer: {
-    flexDirection: "row",
+    flexDirection: 'row',
     borderBottomWidth: 1,
-    borderColor: "#ccc",
-    paddingVertical: hp("2%"),
-    alignItems: "center",
+    borderColor: '#ccc',
+    paddingVertical: 12,
+    alignItems: 'center',
   },
   imagem: {
-    width: wp("18%"),
-    height: wp("18%"),
-    borderRadius: wp("2%"),
-    marginRight: wp("4%"),
-    backgroundColor: "#eee",
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#eee',
   },
-  infoContainer: { flex: 1 },
-  nome: { fontSize: hp("2.2%"), fontWeight: "bold" },
-  preco: { fontSize: hp("1.8%"), marginTop: hp("0.5%") },
-  total: { fontWeight: "bold", marginTop: hp("1%"), fontSize: hp("2%") },
+  infoContainer: {
+    flex: 1,
+  },
+  nome: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  total: {
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
   vazio: {
-    fontSize: hp("2%"),
-    color: "gray",
-    textAlign: "center",
-    marginTop: hp("3%"),
+    fontSize: 16,
+    color: 'gray',
+    textAlign: 'center',
+    marginTop: 20,
   },
   qtdContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: hp("1%"),
-    gap: wp("2%"),
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 8,
   },
   qtdButton: {
-    backgroundColor: "#ccc",
-    paddingHorizontal: wp("3%"),
-    paddingVertical: hp("0.5%"),
-    borderRadius: wp("2%"),
+    backgroundColor: '#ccc',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 4,
   },
   qtdButtonText: {
-    fontSize: hp("2.5%"),
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   qtdTexto: {
-    fontSize: hp("2%"),
-    width: wp("8%"),
-    textAlign: "center",
-    fontWeight: "bold",
+    fontSize: 16,
+    width: 30,
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
   estoqueInfo: {
-    color: "gray",
-    fontSize: hp("1.8%"),
+    color: 'gray',
+    fontSize: 14,
   },
   removerBotao: {
-    marginTop: hp("1%"),
-    backgroundColor: "#e74c3c",
-    paddingVertical: hp("1%"),
-    paddingHorizontal: wp("3%"),
-    borderRadius: wp("2%"),
-    alignSelf: "flex-start",
+    marginTop: 6,
+    backgroundColor: '#e74c3c',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
   },
   removerTexto: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: hp("1.8%"),
+    color: '#fff',
+    fontWeight: 'bold',
   },
   totalContainer: {
-    marginTop: hp("2%"),
-    alignItems: "center",
+    marginTop: 20,
+    alignItems: 'center',
   },
   totalText: {
-    fontSize: hp("2.2%"),
-    fontWeight: "bold",
+    fontSize: 17,
+    fontWeight: 'bold',
   },
   button: {
-    backgroundColor: "#4CAF50",
-    paddingVertical: hp("1.8%"),
-    borderRadius: wp("2%"),
-    marginTop: hp("2%"),
-    alignItems: "center",
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 20,
+    alignItems: 'center',
   },
   buttonText: {
-    color: "#fff",
-    fontSize: hp("2.2%"),
-    fontWeight: "bold",
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  enderecoContainer: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  editarEndereco: {
+    color: '#007bff',
+    marginTop: 4,
+  },
+  salvarEndereco: {
+    color: '#28a745',
+    marginTop: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    padding: 8,
+    marginVertical: 6,
   },
 });
