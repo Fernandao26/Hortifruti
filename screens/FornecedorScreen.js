@@ -418,7 +418,7 @@ export default function FornecedorScreen() {
     {/* Filtro visual para tipo de preço */}
     <Text style={styles.label}>Tipo de Preço:</Text>
     <View style={styles.filtroWrapper}>
-      {["unidade", "kg", "dúzia"].map((tipo) => {
+      {["unid", "kg", "dúzia"].map((tipo) => {
         const ativo = tipoPreco === tipo;
         return (
           <TouchableOpacity
@@ -432,7 +432,23 @@ export default function FornecedorScreen() {
           </TouchableOpacity>
         );
       })}
-   
+      </View>
+    <Text style={styles.label}>Tipo de Estoque:</Text>
+    <View style={styles.filtroWrapper}>
+      {["unid", "kg", "dúzia"].map((tipo) => {
+        const ativo = tipoEstoque === tipo;
+        return (
+          <TouchableOpacity
+            key={tipo}
+            style={[styles.botaoFiltro, ativo && styles.botaoAtivo]}
+            onPress={() => setTipoEstoque(tipo)}
+          >
+            <Text style={ativo ? styles.textoAtivo : styles.textoFiltro}>
+              {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
 
     <TouchableOpacity
