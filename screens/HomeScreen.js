@@ -35,16 +35,18 @@ export default function HomeScreen() {
           ...doc.data(),
         }));
         setProdutos(produtosData);
-  
+
         // Buscar fornecedores
-        const fornecedoresSnapshot = await getDocs(collection(db, "fornecedores"));
+        const fornecedoresSnapshot = await getDocs(
+          collection(db, "fornecedores")
+        );
         const dadosFornecedores = {};
         fornecedoresSnapshot.forEach((doc) => {
           const dados = doc.data();
           dadosFornecedores[dados.email] = dados.empresa;
         });
         setFornecedores(dadosFornecedores);
-  
+
         // Inicializar quantidades
         const quantidadesIniciais = {};
         produtosData.forEach((p) => {
@@ -55,7 +57,7 @@ export default function HomeScreen() {
         console.error("Erro ao buscar dados:", error);
       }
     };
-  
+
     fetchDados();
   }, []);
   useEffect(() => {
@@ -144,8 +146,9 @@ export default function HomeScreen() {
       typeof item.imagem === "string" && item.imagem.trim() !== ""
         ? item.imagem
         : "https://via.placeholder.com/150";
-        console.log("ID do fornecedor:",item.fornecedor);
-        console.log("Nome da empresa:",fornecedores[item.fornecedor]);
+    console.log("ID do fornecedor:", item.fornecedor);
+    console.log("Nome da empresa:", fornecedores[item.fornecedor]);
+    const comprado = carrinho[item.id] !== undefined;
     return (
       <View style={styles.itemContainer}>
         <ImageBackground
@@ -157,8 +160,8 @@ export default function HomeScreen() {
         <View style={styles.infoContainer}>
           <Text style={styles.nome}>{item.nome || "Produto sem nome"}</Text>
           <Text style={styles.fornecedor}>
-  Fornecedor: {fornecedores[item.fornecedor] || "Não informado"}
-</Text>
+            Fornecedor: {fornecedores[item.fornecedor] || "Não informado"}
+          </Text>
           <Text style={styles.estoque}>Estoque: {estoque}</Text>
 
           <View style={styles.quantidadePrecoRow}>
@@ -167,7 +170,7 @@ export default function HomeScreen() {
                 onPress={() => atualizarQuantidade(item.id, -1)}
                 style={styles.qtdBtn}
               >
-                <Icon name="minus-circle-outline" size={23} color="#007bff" />
+                <Icon name="minus-circle-outline" size={25} color="#007bff" />
               </TouchableOpacity>
 
               <Text style={styles.qtdTexto}>{qtd}</Text>
@@ -177,12 +180,18 @@ export default function HomeScreen() {
                   if (qtd < estoque) {
                     atualizarQuantidade(item.id, 1);
                   } else {
-                    alert(`Limite de estoque atingido (${estoque} unidades)`);
+                    alert(
+                      `Limite de estoque atingido (${estoque} ${item.tipoPreco})`
+                    );
                   }
                 }}
                 style={styles.qtdBtn}
               >
-                <Icon name="plus-circle-outline" size={23} color="#007bff" />
+                <Icon
+                  name="plus-circle-outline"
+                  size={25}
+                  color={qtd > 1 ? "#69a461" : "#007bff"}
+                />
               </TouchableOpacity>
             </View>
             <Text style={styles.preco}>
@@ -192,7 +201,10 @@ export default function HomeScreen() {
 
           <View style={styles.acaoRow}>
             <TouchableOpacity
-              style={styles.botaoaddCarrinho}
+              style={[
+                styles.botaoaddCarrinho,
+                { backgroundColor: comprado ? "#28a745" : "#007bff" },
+              ]}
               onPress={() => {
                 if (qtd <= 0 || isNaN(qtd)) {
                   console.log("Quantidade invalida");
@@ -338,22 +350,22 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         {fornecedoresUnicos.map((email, i) => {
-  const ativo = fornecedorSelecionado === email;
-  const nomeEmpresa = fornecedores[email] || "Fornecedor desconhecido";
-  return (
-    <TouchableOpacity
-      key={i}
-      onPress={() => setFornecedorSelecionado(email)}
-      style={[styles.filtroItem, ativo && styles.filtroItemAtivo]}
-    >
-      <Text
-        style={[styles.filtroTexto, ativo && styles.filtroTextoAtivo]}
-      >
-        {nomeEmpresa}
-      </Text>
-    </TouchableOpacity>
-  );
-})}
+          const ativo = fornecedorSelecionado === email;
+          const nomeEmpresa = fornecedores[email] || "Fornecedor desconhecido";
+          return (
+            <TouchableOpacity
+              key={i}
+              onPress={() => setFornecedorSelecionado(email)}
+              style={[styles.filtroItem, ativo && styles.filtroItemAtivo]}
+            >
+              <Text
+                style={[styles.filtroTexto, ativo && styles.filtroTextoAtivo]}
+              >
+                {nomeEmpresa}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       <FlatList

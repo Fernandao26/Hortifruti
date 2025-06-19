@@ -10,7 +10,11 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
-import { useRoute, useNavigation, useFocusEffect } from "@react-navigation/native";
+import {
+  useRoute,
+  useNavigation,
+  useFocusEffect,
+} from "@react-navigation/native";
 import { auth, db } from "../firebaseConfig";
 import {
   doc,
@@ -334,10 +338,7 @@ export default function CarrinhoScreen() {
             >
               <Text style={styles.buttonText}>Voltar</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={salvarEndereco}
-              style={styles.button}
-            >
+            <TouchableOpacity onPress={salvarEndereco} style={styles.button}>
               <Text style={styles.buttonText}>Salvar Endereço</Text>
             </TouchableOpacity>
           </View>
@@ -347,7 +348,9 @@ export default function CarrinhoScreen() {
       {/* Lista de Produtos por Fornecedor */}
       {Object.entries(carrinhoAgrupado).map(([fornecedor, itens]) => (
         <View key={fornecedor} style={styles.fornecedorGroup}>
-          <Text style={styles.fornecedorTitle}>🧺 Fornecedor: {fornecedor}</Text>
+          <Text style={styles.fornecedorTitle}>
+            🧺 Fornecedor: {fornecedor}
+          </Text>
           {itens.map((item) => renderItem({ item }))}
         </View>
       ))}
