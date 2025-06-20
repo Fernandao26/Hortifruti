@@ -9,10 +9,10 @@ import {
   ScrollView,
   ImageBackground,
 } from "react-native";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, doc, deleteDoc } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { Picker } from "@react-native-picker/picker";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute, useIsFocused, } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { wp, hp } from "../src/utils/responsive";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
@@ -25,6 +25,7 @@ export default function HomeScreen() {
   const [carrinho, setCarrinho] = useState({});
   const [fornecedores, setFornecedores] = useState({});
   const navigation = useNavigation();
+  const isFocused = useIsFocused();
   useEffect(() => {
     const fetchDados = async () => {
       try {
@@ -46,7 +47,25 @@ export default function HomeScreen() {
           dadosFornecedores[dados.email] = dados.empresa;
         });
         setFornecedores(dadosFornecedores);
+ // Carregar carrinho do Firebase
+ const carregarCarrinho = async () => {
+  try {
+    const snapshot = await getDocs(collection(db, "carrinho"));
+    const lista = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
 
+    const carrinhoMap = {};
+    lista.forEach((item) => {
+      carrinhoMap[item.produtoId] = item;
+    });
+
+    setCarrinho(carrinhoMap);
+  } catch (error) {
+    console.error("Erro ao carregar carrinho:", error);
+  }
+}
         // Inicializar quantidades
         const quantidadesIniciais = {};
         produtosData.forEach((p) => {
@@ -60,6 +79,7 @@ export default function HomeScreen() {
 
     fetchDados();
   }, []);
+  
   useEffect(() => {
     const fetchProdutos = async () => {
       try {
@@ -137,8 +157,7 @@ export default function HomeScreen() {
   // Substitua dentro do renderItem
   const renderItem = ({ item }) => {
     const qtd = Math.max(1, quantidades[item.id] ?? 1); // Garante quantidade mínima de 1
-    const precoValido =
-      item.preco && !isNaN(item.preco) ? Number(item.preco) : 0;
+    const precoValido = item.preco ? Number(item.preco) : 0;
     const total = (precoValido * qtd).toFixed(2);
     const estoque = item.estoque ?? 0;
 
@@ -195,7 +214,7 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
             <Text style={styles.preco}>
-              R$ {precoValido.toFixed(2)} /{item.tipoPreco || "Unidade"}
+              R$ {precoValido.toFixed(2)} /{item.tipoPreco || "Unid"}
             </Text>
           </View>
 
