@@ -31,6 +31,8 @@ import { Picker } from "@react-native-picker/picker";
 import ProdutosAtivos from "../ProdutosAtivos";
 import EditarProduto from "../EditarProduto";
 import MenuFornecedor from "../MenuFornecedor";
+import { wp, hp } from "../src/utils/responsive";
+import { SafeAreaView } from "react-native";
 
 export default function FornecedorScreen() {
   const navigation = useNavigation();
@@ -120,87 +122,94 @@ export default function FornecedorScreen() {
     return "";
   };
 
-  const cadastrarProduto = async () => {  
-    if (!nome || !categoria || !preco || !estoque || !tipoPreco || !tipoEstoque) {  
-      return Alert.alert("Preencha todos os campos!");  
-    }  
-  
-    try {  
-      const imagemURL = await buscarImagemPorNome(nome);  
-  
-      const docRef = await addDoc(collection(db, "produtos"), {  
-        nome,  
-        categoria,  
-        preco: parseFloat(preco),  
-        tipoPreco,                  // <- novo campo
-        estoque: parseFloat(estoque),  
-        tipoEstoque,                // <- novo campo
-        imagem: imagemURL,  
-        fornecedor: user.email,  
-        fornecedor_uid: user.uid,  
-        product_id: "",  
-      });  
-  
-      await updateDoc(docRef, {  
-        product_id: docRef.id,  
-      });  
-  
-      Alert.alert("Produto cadastrado com sucesso!");  
-      setNome("");  
-      setCategoria("");  
-      setPreco("");  
-      setEstoque("");  
-      setTipoPreco("unidade");     // <- limpa campo
-      setTipoEstoque("unidade");   // <- limpa campo
-      carregarProdutos();  
-    } catch (error) {  
-      console.error("Erro ao cadastrar produto:", error);  
-      Alert.alert("Erro ao cadastrar produto");  
-    }  
-  };  
-  
-  const editarProduto = (produto) => {  
-    setProdutoSelecionado(produto);  
-    setNome(produto.nome);  
-    setCategoria(produto.categoria);  
-    setPreco(produto.preco.toString());  
-    setEstoque(produto.estoque.toString());  
-    setTipoPreco(produto.tipoPreco || "unidade");      // <- novo
-    setTipoEstoque(produto.tipoEstoque || "unidade");  // <- novo
-    setModoEdicao(true);  
-    setTelaAtual("cadastro");  
-  };  
-  
-  const salvarEdicaoProduto = async () => {  
-    try {  
-      const imagemURL = await buscarImagemPorNome(nome);  
-    
-      const ref = doc(db, "produtos", produtoSelecionado.id);  
-      await updateDoc(ref, {  
-        nome,  
-        categoria,  
-        preco: parseFloat(preco),  
-        tipoPreco,                      // <- novo campo
-        estoque: parseFloat(estoque),  
-        tipoEstoque,                    // <- novo campo
-        imagem: imagemURL,  
-      });  
-  
-      Alert.alert("Produto editado com sucesso!");  
-      setModoEdicao(false);  
-      setProdutoSelecionado(null);  
-      setNome("");  
-      setCategoria("");  
-      setPreco("");  
-      setEstoque("");  
-      setTipoPreco("unidade");  
-      setTipoEstoque("unidade");  
-      setTelaAtual("ativos");  
-      carregarProdutos();  
-    } catch (err) {  
-      console.error("Erro ao editar produto:", err);  
-      Alert.alert("Erro ao editar produto");  
-    }  
+  const cadastrarProduto = async () => {
+    if (
+      !nome ||
+      !categoria ||
+      !preco ||
+      !estoque ||
+      !tipoPreco ||
+      !tipoEstoque
+    ) {
+      return Alert.alert("Preencha todos os campos!");
+    }
+
+    try {
+      const imagemURL = await buscarImagemPorNome(nome);
+
+      const docRef = await addDoc(collection(db, "produtos"), {
+        nome,
+        categoria,
+        preco: parseFloat(preco),
+        tipoPreco, // <- novo campo
+        estoque: parseFloat(estoque),
+        tipoEstoque, // <- novo campo
+        imagem: imagemURL,
+        fornecedor: user.email,
+        fornecedor_uid: user.uid,
+        product_id: "",
+      });
+
+      await updateDoc(docRef, {
+        product_id: docRef.id,
+      });
+
+      Alert.alert("Produto cadastrado com sucesso!");
+      setNome("");
+      setCategoria("");
+      setPreco("");
+      setEstoque("");
+      setTipoPreco("unidade"); // <- limpa campo
+      setTipoEstoque("unidade"); // <- limpa campo
+      carregarProdutos();
+    } catch (error) {
+      console.error("Erro ao cadastrar produto:", error);
+      Alert.alert("Erro ao cadastrar produto");
+    }
+  };
+
+  const editarProduto = (produto) => {
+    setProdutoSelecionado(produto);
+    setNome(produto.nome);
+    setCategoria(produto.categoria);
+    setPreco(produto.preco.toString());
+    setEstoque(produto.estoque.toString());
+    setTipoPreco(produto.tipoPreco || "unidade"); // <- novo
+    setTipoEstoque(produto.tipoEstoque || "unidade"); // <- novo
+    setModoEdicao(true);
+    setTelaAtual("cadastro");
+  };
+
+  const salvarEdicaoProduto = async () => {
+    try {
+      const imagemURL = await buscarImagemPorNome(nome);
+
+      const ref = doc(db, "produtos", produtoSelecionado.id);
+      await updateDoc(ref, {
+        nome,
+        categoria,
+        preco: parseFloat(preco),
+        tipoPreco, // <- novo campo
+        estoque: parseFloat(estoque),
+        tipoEstoque, // <- novo campo
+        imagem: imagemURL,
+      });
+
+      Alert.alert("Produto editado com sucesso!");
+      setModoEdicao(false);
+      setProdutoSelecionado(null);
+      setNome("");
+      setCategoria("");
+      setPreco("");
+      setEstoque("");
+      setTipoPreco("unidade");
+      setTipoEstoque("unidade");
+      setTelaAtual("ativos");
+      carregarProdutos();
+    } catch (err) {
+      console.error("Erro ao editar produto:", err);
+      Alert.alert("Erro ao editar produto");
+    }
   };
   const excluirProduto = async (id) => {
     try {
@@ -317,151 +326,175 @@ export default function FornecedorScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      {telaAtual === "ativos" && (
-        <>
-          <Picker
-            selectedValue={categoriaFiltro}
-            onValueChange={(itemValue) => setCategoriaFiltro(itemValue)}
-            style={{ marginHorizontal: 10 }}
-          >
-            <Picker.Item label="Todas as Categorias" value="" />
-            <Picker.Item label="Frutas" value="Frutas" />
-            <Picker.Item label="Verduras" value="Verduras" />
-            <Picker.Item label="Legumes" value="Legumes" />
-            {/* Adicione mais categorias conforme seu sistema */}
-          </Picker>
+      <SafeAreaView style={{ flex: 1 }}>
+        {telaAtual === "ativos" && (
+          <>
+            <Text style={styles.tituloFiltro}>Meus Produtos</Text>
+            <View style={styles.filtroWrapper}>
+              <TouchableOpacity
+                onPress={() => setCategoriaFiltro("")}
+                style={[
+                  styles.filtroItem,
+                  categoriaFiltro === "" && styles.filtroItemAtivo,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.filtroTexto,
+                    categoriaFiltro === "" && styles.filtroTextoAtivo,
+                  ]}
+                >
+                  Todos
+                </Text>
+              </TouchableOpacity>
 
-          <ProdutosAtivos
-            produtos={produtosAtivos}
-            renderCard={renderCard}
-            aplicarFiltrosEOrdenacao={aplicarFiltrosEOrdenacao}
-          />
-        </>
-      )}
+              {["Frutas", "Legumes", "Verduras"].map((categoria) => {
+                const ativa = categoriaFiltro === categoria;
+                return (
+                  <TouchableOpacity
+                    key={categoria}
+                    onPress={() => setCategoriaFiltro(categoria)}
+                    style={[styles.filtroItem, ativa && styles.filtroItemAtivo]}
+                  >
+                    <Text
+                      style={[
+                        styles.filtroTexto,
+                        ativa && styles.filtroTextoAtivo,
+                      ]}
+                    >
+                      {categoria}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <ProdutosAtivos
+              produtos={produtosAtivos}
+              renderCard={renderCard}
+              aplicarFiltrosEOrdenacao={aplicarFiltrosEOrdenacao}
+            />
+          </>
+        )}
 
-      {telaAtual === "vendidos" && (
-        <>
-          <Picker
-            selectedValue={categoriaFiltro}
-            onValueChange={(itemValue) => setCategoriaFiltro(itemValue)}
-            style={{ marginHorizontal: 10 }}
-          >
-            <Picker.Item label="Todas as Categorias" value="" />
-            <Picker.Item label="Frutas" value="Frutas" />
-            <Picker.Item label="Verduras" value="Verduras" />
-            <Picker.Item label="Legumes" value="Legumes" />
-          </Picker>
+        {telaAtual === "vendidos" && (
+          <>
+            <FlatList
+              data={aplicarFiltrosEOrdenacao(produtos)}
+              keyExtractor={(item) => item.id}
+              numColumns={2}
+              contentContainerStyle={{ padding: 10 }}
+              columnWrapperStyle={{ justifyContent: "space-between" }}
+              renderItem={renderCard}
+              ListEmptyComponent={
+                <Text style={styles.semProdutos}>Nenhum produto</Text>
+              }
+            />
+          </>
+        )}
+        {telaAtual === "cadastro" && (
+          <ScrollView contentContainerStyle={{ padding: 20 }}>
+            <Text style={styles.titulo}>Cadastro de Produto</Text>
 
-          <FlatList
-  data={aplicarFiltrosEOrdenacao(produtos)}
-  keyExtractor={(item) => item.id}
-  numColumns={2}
-  contentContainerStyle={{ padding: 10 }}
-  columnWrapperStyle={{ justifyContent: 'space-between' }}
-  renderItem={renderCard}
-  ListEmptyComponent={
-    <Text style={styles.semProdutos}>Nenhum produto</Text>
-  }
-/>
-        </>
-      )}
-{telaAtual === "cadastro" && (
-  <ScrollView contentContainerStyle={{ padding: 20 }}>
-    <Text style={styles.titulo}>Cadastro de Produto</Text>
+            <TextInput
+              placeholder="Nome do Produto"
+              value={nome}
+              onChangeText={setNome}
+              style={styles.input}
+            />
 
-    <TextInput
-      placeholder="Nome do Produto"
-      value={nome}
-      onChangeText={setNome}
-      style={styles.input}
-    />
+            {/* Filtro visual para categoria */}
+            <Text style={styles.label}>Categoria:</Text>
+            <View style={styles.filtroWrapper}>
+              {["Frutas", "Legumes", "Verduras"].map((cat) => {
+                const ativo = categoria === cat;
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.botaoFiltro, ativo && styles.botaoAtivo]}
+                    onPress={() => setCategoria(cat)}
+                  >
+                    <Text
+                      style={ativo ? styles.textoAtivo : styles.textoFiltro}
+                    >
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-    {/* Filtro visual para categoria */}
-    <Text style={styles.label}>Categoria:</Text>
-    <View style={styles.filtroWrapper}>
-      {["Frutas", "Legumes", "Verduras"].map((cat) => {
-        const ativo = categoria === cat;
-        return (
-          <TouchableOpacity
-            key={cat}
-            style={[styles.botaoFiltro, ativo && styles.botaoAtivo]}
-            onPress={() => setCategoria(cat)}
-          >
-            <Text style={ativo ? styles.textoAtivo : styles.textoFiltro}>
-              {cat}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
+            <TextInput
+              value={precoFormatado}
+              onChangeText={(text) => {
+                const onlyNumbers = text.replace(/[^0-9]/g, "");
+                const float = parseFloat(onlyNumbers) / 100;
+                setPreco(float.toFixed(2));
+              }}
+              keyboardType="numeric"
+              placeholder="Preço (R$)"
+              style={styles.input}
+            />
 
-    <TextInput
-      value={precoFormatado}
-      onChangeText={(text) => {
-        const onlyNumbers = text.replace(/[^0-9]/g, "");
-        const float = parseFloat(onlyNumbers) / 100;
-        setPreco(float.toFixed(2));
-      }}
-      keyboardType="numeric"
-      placeholder="Preço (R$)"
-      style={styles.input}
-    />
+            <TextInput
+              placeholder="Estoque"
+              value={estoque}
+              onChangeText={setEstoque}
+              keyboardType="numeric"
+              style={styles.input}
+            />
 
-    <TextInput
-      placeholder="Estoque"
-      value={estoque}
-      onChangeText={setEstoque}
-      keyboardType="numeric"
-      style={styles.input}
-    />
+            {/* Filtro visual para tipo de preço */}
+            <Text style={styles.label}>Tipo de Preço:</Text>
+            <View style={styles.filtroWrapper}>
+              {["unid", "kg", "dúzia"].map((tipo) => {
+                const ativo = tipoPreco === tipo;
+                return (
+                  <TouchableOpacity
+                    key={tipo}
+                    style={[styles.botaoFiltro, ativo && styles.botaoAtivo]}
+                    onPress={() => setTipoPreco(tipo)}
+                  >
+                    <Text
+                      style={ativo ? styles.textoAtivo : styles.textoFiltro}
+                    >
+                      {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={styles.label}>Tipo de Estoque:</Text>
+            <View style={styles.filtroWrapper}>
+              {["unid", "kg", "dúzia"].map((tipo) => {
+                const ativo = tipoEstoque === tipo;
+                return (
+                  <TouchableOpacity
+                    key={tipo}
+                    style={[styles.botaoFiltro, ativo && styles.botaoAtivo]}
+                    onPress={() => setTipoEstoque(tipo)}
+                  >
+                    <Text
+                      style={ativo ? styles.textoAtivo : styles.textoFiltro}
+                    >
+                      {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-    {/* Filtro visual para tipo de preço */}
-    <Text style={styles.label}>Tipo de Preço:</Text>
-    <View style={styles.filtroWrapper}>
-      {["unid", "kg", "dúzia"].map((tipo) => {
-        const ativo = tipoPreco === tipo;
-        return (
-          <TouchableOpacity
-            key={tipo}
-            style={[styles.botaoFiltro, ativo && styles.botaoAtivo]}
-            onPress={() => setTipoPreco(tipo)}
-          >
-            <Text style={ativo ? styles.textoAtivo : styles.textoFiltro}>
-              {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-      </View>
-    <Text style={styles.label}>Tipo de Estoque:</Text>
-    <View style={styles.filtroWrapper}>
-      {["unid", "kg", "dúzia"].map((tipo) => {
-        const ativo = tipoEstoque === tipo;
-        return (
-          <TouchableOpacity
-            key={tipo}
-            style={[styles.botaoFiltro, ativo && styles.botaoAtivo]}
-            onPress={() => setTipoEstoque(tipo)}
-          >
-            <Text style={ativo ? styles.textoAtivo : styles.textoFiltro}>
-              {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </View>
-
-    <TouchableOpacity
-      onPress={modoEdicao ? salvarEdicaoProduto : cadastrarProduto}
-      style={styles.botaoSalvar}
-    >
-      <Text style={styles.textoBotao}>Salvar Produto</Text>
-    </TouchableOpacity>
-  </ScrollView>
-)}
-      {telaAtual === "dashboard" && renderDashboard()}
-
+            <TouchableOpacity
+              onPress={modoEdicao ? salvarEdicaoProduto : cadastrarProduto}
+              style={styles.botaoSalvar}
+            >
+              <Text style={styles.textoBotao}>Salvar Produto</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
+        {telaAtual === "dashboard" && renderDashboard()}
+      </SafeAreaView>
       {/* Menu Inferior */}
+
       <View style={styles.menuInferior}>
         <TouchableOpacity onPress={() => setTelaAtual("ativos")}>
           <Text>Ativos</Text>
@@ -484,94 +517,182 @@ export default function FornecedorScreen() {
 }
 
 const styles = StyleSheet.create({
-  menuInferior: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingVertical: 19,
+  container: {
+    flex: 1,
     backgroundColor: "#fff",
-    borderTopWidth: 2,
-    borderColor: "#ccc",
-    marginBottom: 50,
+    paddingHorizontal: wp("4%"),
+    paddingTop: hp("2%"),
   },
-  filtroWrapper: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginBottom: 10,
-    gap: 10,
-  },
-  
-  botaoFiltro: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderRadius: 20,
-    borderColor: "#ccc",
-  },
-  
-  botaoAtivo: {
-    backgroundColor: "#4CAF50",
-    borderColor: "#4CAF50",
-  },
-  
-  textoFiltro: {
-    color: "#333",
-  },
-  
-  textoAtivo: {
-    color: "#fff",
+  titulo: {
+    fontSize: hp("2.8%"),
     fontWeight: "bold",
-  },
-  
-  label: {
-    fontWeight: "bold",
-    marginTop: 10,
-    marginBottom: 5,
+    textAlign: "center",
+    marginBottom: hp("2%"),
   },
   input: {
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 10,
-    backgroundColor: "#fff",
+    borderRadius: 8,
+    paddingVertical: hp("1.5%"),
+    paddingHorizontal: wp("4%"),
+    marginBottom: hp("1.5%"),
+    backgroundColor: "#f9f9f9",
+    fontSize: hp("1.8%"),
+  },
+  label: {
+    fontWeight: "600",
+    marginBottom: hp("0.5%"),
+    fontSize: hp("1.8%"),
+  },
+  filtroWrapper: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: wp("3%"),
+    marginBottom: hp("2%"),
+  },
+  botaoFiltro: {
+    paddingHorizontal: wp("5%"),
+    paddingVertical: hp("1%"),
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  botaoAtivo: {
+    backgroundColor: "#4CAF50",
+    borderColor: "#4CAF50",
+  },
+  textoFiltro: {
+    color: "#333",
+    fontSize: hp("1.6%"),
+  },
+  textoAtivo: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: hp("1.6%"),
   },
   botaoSalvar: {
-    backgroundColor: "green",
-    padding: 15,
-    borderRadius: 5,
+    backgroundColor: "#4CAF50",
+    paddingVertical: hp("2%"),
+    borderRadius: 8,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: hp("2%"),
   },
-  menu: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginVertical: 10,
+  textoBotao: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: hp("1.8%"),
   },
   card: {
-    width: '48%', // ou um valor fixo como 160
-    margin: '1%',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    padding: 10,
+    width: wp("44%"),
+    margin: wp("2%"),
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: wp("3%"),
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    alignItems: "center",
   },
-  image: { width: "100%", height: 100, resizeMode: "cover", borderRadius: 4 },
-  nome: { fontWeight: "bold", fontSize: 16 },
-  preco: { color: "green" },
+  image: {
+    width: wp("35%"),
+    height: hp("12%"),
+    resizeMode: "cover",
+    borderRadius: 8,
+    marginBottom: hp("1%"),
+  },
+  nome: {
+    fontSize: hp("1.8%"),
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: hp("0.5%"),
+  },
+  preco: {
+    color: "#27ae60",
+    fontWeight: "bold",
+    marginBottom: hp("1%"),
+  },
   botoesCard: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 10,
+    width: "100%",
   },
-  botaoEditar: { backgroundColor: 'green', padding: 5, borderRadius: 5 },
-  botaoExcluir: { backgroundColor: "red", padding: 5, borderRadius: 5 },
-  textoBotao: { color: "white" },
-  semImagem: { fontStyle: "italic", textAlign: "center" },
-  semProdutos: { textAlign: "center", marginTop: 20, fontStyle: "italic" },
-  titulo: {
-    fontSize: 20,
+  botaoEditar: {
+    backgroundColor: "#3498db",
+    paddingVertical: hp("0.8%"),
+    paddingHorizontal: wp("3%"),
+    borderRadius: 6,
+    flex: 1,
+    marginRight: wp("1%"),
+    alignItems: "center",
+  },
+  botaoExcluir: {
+    backgroundColor: "#e74c3c",
+    paddingVertical: hp("0.8%"),
+    paddingHorizontal: wp("3%"),
+    borderRadius: 6,
+    flex: 1,
+    marginLeft: wp("1%"),
+    alignItems: "center",
+  },
+  menuInferior: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    paddingVertical: 15,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderColor: "#ccc",
+  },
+  tituloFiltro: {
+    fontSize: hp(2.5),
     fontWeight: "bold",
+    marginHorizontal: wp(6),
+    marginTop: hp("5%"),
+    color: "#333",
+  },
+
+  filtroWrapper: {
+    flexDirection: "row",
+    gap: wp(3),
+    paddingHorizontal: wp(3),
+    paddingVertical: hp(1),
+    minHeight: hp("2%"), // garante altura mínima
+    alignItems: "flex-start",
+    alignContent: "center",
+
+    // não centraliza verticalmente
+  },
+
+  filtroItem: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: wp(10),
+    paddingVertical: hp(0.7),
+    paddingHorizontal: wp(4),
+    backgroundColor: "#fff",
+    margin: wp(0.4),
+  },
+
+  filtroItemAtivo: {
+    backgroundColor: "#69a461",
+  },
+
+  filtroTexto: {
+    fontSize: hp(1.5),
+    color: "#333",
     textAlign: "center",
-    marginVertical: 10,
+  },
+
+  filtroTextoAtivo: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });
