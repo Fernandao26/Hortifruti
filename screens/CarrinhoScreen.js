@@ -66,20 +66,35 @@ export default function CarrinhoScreen() {
     return agruparPorFornecedor(carrinho);
   }, [carrinho]);
 
-  // Carregar carrinho do Firebase ao abrir ou focar a tela
-  const carregarCarrinho = async () => {
-    try {
-      const snapshot = await getDocs(collection(db, "carrinho"));
-      const lista = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setCarrinho(lista);
-    } catch (error) {
-      console.error("Erro ao carregar carrinho:", error);
-    }
-  };
+ // Carregar carrinho do Firebase
+ const carregarCarrinho = async () => {
+  try {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
 
+    const q = query(collection(db, "carrinho"), where("uid", "==", uid));
+    const snapshot = await getDocs(q);
+
+    const lista = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    setCarrinho(lista);
+  } catch (error) {
+    console.error("Erro ao carregar carrinho:", error);
+  }
+};
+ // Função para atualizar quantidade no Firebase
+ const atualizarQuantidadeNoFirebase = async (itemId, novaQuantidade) => {
+  try {
+    const itemRef = doc(db, "carrinho", itemId);
+    await updateDoc(itemRef, {
+      quantidade: novaQuantidade,
+    });
+  } catch (error) {
+    console.error("Erro ao atualizar quantidade:", error);
+  }
+};
   useFocusEffect(
     useCallback(() => {
       carregarCarrinho(); // Recarrega carrinho sempre que a tela for aberta
@@ -98,6 +113,11 @@ export default function CarrinhoScreen() {
       console.error("Erro ao carregar endereço:", err);
     }
   };
+  useEffect(() => {
+    if (auth.currentUser) {
+      fetchEnderecoUsuario();
+    }
+  }, []);
 
   const selecionarEndereco = (end) => {
     setEnderecoUser(end.endereco);
@@ -124,20 +144,26 @@ export default function CarrinhoScreen() {
   const totalProdutos = calcularTotalCarrinho();
   const totalComFrete = (totalProdutos + freteCalculado).toFixed(2);
 
-  const alterarQuantidade = (id, op) => {
-    setCarrinho((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const qtd = op === "mais" ? item.quantidade + 1 : item.quantidade - 1;
-          return { ...item, quantidade: Math.max(1, qtd) };
-        }
-        return item;
-      })
-    );
-  };
+// Função chamada pelos botões "+" e "-"
+const alterarQuantidade = (id, op) => {
+  setCarrinho((prev) =>
+    prev.map((item) => {
+      if (item.id === id) {
+        const qtd = op === "mais" ? item.quantidade + 1 : item.quantidade - 1;
+        const novaQtd = Math.max(1, qtd);
 
+        // Atualiza no Firebase
+        atualizarQuantidadeNoFirebase(id, novaQtd);
+
+        return { ...item, quantidade: novaQtd };
+      }
+      return item;
+    })
+  );
+};
   const removerItem = async (itemId) => {
     try {
+      await deleteDoc(doc(db, "carrinho", itemId));
       // Remover do estado local
       const atualizado = carrinho.filter((item) => item.id !== itemId);
       setCarrinho(atualizado);
@@ -149,6 +175,7 @@ export default function CarrinhoScreen() {
       Alert.alert("Erro", "Não foi possível remover o item.");
     }
   };
+  
 
   // Renderizar cada item do carrinho
   const renderItem = ({ item }) => (
@@ -353,16 +380,14 @@ export default function CarrinhoScreen() {
       </>
     )}
 
-    {/* Lista de Produtos Agrupados */}
-    {Object.entries(carrinhoAgrupado || {}).length > 0 ? (
-      Object.entries(carrinhoAgrupado || {}).map(([fornecedor, itens]) => (
-        <View key={fornecedor} style={styles.fornecedorGroup}>
-          <Text style={styles.fornecedorTitle}>
-            🧺 Fornecedor: {fornecedor}
-          </Text>
-          {itens.map((item) => renderItem({ item: item }))}
-        </View>
-      ))
+     {/* Lista de Produtos Agrupados */}
+     {Object.entries(carrinhoAgrupado).length > 0 ? (
+        Object.entries(carrinhoAgrupado).map(([fornecedor, itens]) => (
+          <View key={fornecedor} style={styles.fornecedorGroup}>
+            <Text style={styles.fornecedorTitle}>🧺 Fornecedor: {fornecedor}</Text>
+            {itens.map((item) => renderItem({ item }))}
+          </View>
+        ))
     ) : (
       <Text style={styles.emptyCart}>Seu carrinho está vazio.</Text>
     )}

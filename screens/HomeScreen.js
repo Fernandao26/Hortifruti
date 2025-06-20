@@ -8,9 +8,10 @@ import {
   StyleSheet,
   ScrollView,
   ImageBackground,
+  Alert,
 } from "react-native";
-import { collection, getDocs, addDoc, doc, deleteDoc } from "firebase/firestore";
-import { db } from "../firebaseConfig";
+import { collection, getDocs, addDoc, doc, deleteDoc, query, where } from "firebase/firestore";
+import { db, auth } from "../firebaseConfig";
 import { Picker } from "@react-native-picker/picker";
 import { useNavigation, useRoute, useIsFocused, } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,7 +30,6 @@ export default function HomeScreen() {
   useEffect(() => {
     const fetchDados = async () => {
       try {
-        // Buscar produtos
         const querySnapshot = await getDocs(collection(db, "produtos"));
         const produtosData = querySnapshot.docs.map((doc) => ({
           id: doc.id,
@@ -38,19 +38,24 @@ export default function HomeScreen() {
         setProdutos(produtosData);
 
         // Buscar fornecedores
-        const fornecedoresSnapshot = await getDocs(
-          collection(db, "fornecedores")
-        );
+        const fornecedoresSnapshot = await getDocs(collection(db, "fornecedores"));
         const dadosFornecedores = {};
         fornecedoresSnapshot.forEach((doc) => {
-          const dados = doc.data();
-          dadosFornecedores[dados.email] = dados.empresa;
+          const data = doc.data();
+          dadosFornecedores[data.email] = data.empresa;
         });
         setFornecedores(dadosFornecedores);
  // Carregar carrinho do Firebase
- const carregarCarrinho = async () => {
+// Carregar carrinho do usuário atual
+// Carregar carrinho do usuário atual
+const carregarCarrinho = async () => {
   try {
-    const snapshot = await getDocs(collection(db, "carrinho"));
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+
+    const q = query(collection(db, "carrinho"), where("uid", "==", uid));
+    const snapshot = await getDocs(q);
+
     const lista = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
@@ -65,7 +70,8 @@ export default function HomeScreen() {
   } catch (error) {
     console.error("Erro ao carregar carrinho:", error);
   }
-}
+};
+
         // Inicializar quantidades
         const quantidadesIniciais = {};
         produtosData.forEach((p) => {
@@ -113,12 +119,13 @@ export default function HomeScreen() {
 
   const atualizarQuantidade = (id, delta) => {
     setQuantidades((prev) => {
-      const atual = prev[id] || 0;
-      const novaQtd = Math.max(0, atual + delta);
+      const atual = prev[id] || 1;
+      const novaQtd = Math.max(1, atual + delta);
       return { ...prev, [id]: novaQtd };
     });
   };
 
+  // Adicionar ao carrinho com `uid`
   const adicionarAoCarrinho = async (id) => {
     const produto = produtos.find((p) => p.id === id);
     const qtd = quantidades[id] || 0;
@@ -129,31 +136,34 @@ export default function HomeScreen() {
     }
 
     try {
-      await addDoc(collection(db, "carrinho"), {
+      const docRef = await addDoc(collection(db, "carrinho"), {
+        uid: auth.currentUser.uid, // ✅ Associa ao usuário atual
         produtoId: produto.id,
         nome: produto.nome,
         imagem: produto.imagem,
         preco: Number(produto.preco),
         quantidade: qtd,
         timestamp: new Date(),
+        fornecedor: fornecedores[produto.fornecedor] // ✅ Vamos corrigir isso abaixo
       });
 
       setCarrinho((prev) => ({
         ...prev,
         [id]: {
-          id: produto.id,
-          nome: produto.nome,
-          preco: Number(produto.preco),
+          id: docRef.id,
+          ...produto,
           quantidade: qtd,
-          imagem: produto.imagem,
+          preco: Number(produto.preco),
         },
       }));
+
+      setQuantidades((prev) => ({ ...prev, [id]: 1 }));
+      Alert.alert("Produto adicionado ao carrinho");
     } catch (error) {
       console.error("Erro ao adicionar ao carrinho:", error);
       alert("Erro ao adicionar ao carrinho");
     }
   };
-
   // Substitua dentro do renderItem
   const renderItem = ({ item }) => {
     const qtd = Math.max(1, quantidades[item.id] ?? 1); // Garante quantidade mínima de 1
@@ -295,13 +305,11 @@ export default function HomeScreen() {
                   style={{ width: 28, height: 28 }}
                   resizeMode="contain"
                 />
-                {Object.keys(carrinho).length > 0 && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>
-                      {Object.keys(carrinho).length}
-                    </Text>
-                  </View>
-                )}
+               {Object.keys(carrinho).length > 0 && (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{Object.keys(carrinho).length}</Text>
+            </View>
+          )}
               </TouchableOpacity>
             </View>
           </View>
@@ -388,11 +396,14 @@ export default function HomeScreen() {
       </ScrollView>
 
       <FlatList
-        data={produtosFiltrados}
+        data={produtos.filter((p) => {
+          const categoriaOk = categoriaSelecionada ? p.categoria === categoriaSelecionada : true;
+          const fornecedorOk = fornecedorSelecionado ? p.fornecedor === fornecedorSelecionado : true;
+          return categoriaOk && fornecedorOk;
+        })}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        contentContainerStyle={styles.lista}
-        numColumns={1}
+        scrollEnabled={true}
       />
 
       {/* Menu inferior */}

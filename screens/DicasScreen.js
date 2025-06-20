@@ -4,7 +4,7 @@ import { View, Text, StyleSheet } from 'react-native';
 export default function PedidosScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>Tela de Pedidos</Text>
+      <Text style={styles.text}>Em Breve!</Text>
     </View>
   );
 }
