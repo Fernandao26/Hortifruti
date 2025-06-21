@@ -45,7 +45,7 @@ export default function CarrinhoScreen() {
   const [cep, setCep] = useState("");
   const [cidadeInput, setCidadeInput] = useState("");
   const [estadoInput, setEstadoInput] = useState("");
-  const [freteCalculado, setFreteCalculado] = useState(7); // Frete fixo R$ 7,00;
+  const [freteCalculado, setFreteCalculado] = useState(null); // Frete fixo R$ 7,00;
   const [enderecosSalvos, setEnderecosSalvos] = useState([]);
 
   const CEP_LOJA = "12507050";
@@ -109,6 +109,12 @@ export default function CarrinhoScreen() {
       setEnderecoUser(data.endereco || "");
       setNumeroUser(data.numero || "");
       setBairroUser(data.bairro || "");
+      const cepSalvo = data.cep || "";
+    setCep(cepSalvo); // Salva no estado do CEP
+    
+    if (cepSalvo.length === 8) {
+      await buscarEnderecoPorCEP(cepSalvo); // Calcula o frete
+    }
     } catch (err) {
       console.error("Erro ao carregar endereço:", err);
     }
@@ -245,10 +251,27 @@ const alterarQuantidade = (id, op) => {
       setCidadeInput(data.localidade || "");
       setEstadoInput(data.uf || "");
 
-      const distanciaEstimada =
-        parseInt(CEP_LOJA.substring(0, 5)) - parseInt(cepDigitado.substring(0, 5));
-      const frete = Math.max(0, Math.ceil(Math.abs(distanciaEstimada) / 4) * 10);
-      setFreteCalculado(frete);
+      // Converter CEP para número
+const cepNumero = parseInt(cepDigitado);
+
+let novoFrete;
+
+if (cepNumero >= 12500001 && cepNumero <= 12505001) {
+  novoFrete = 3; // Frete grátis
+} else if (cepNumero >= 12505002 && cepNumero <= 12510001) {
+  novoFrete = 5;
+} else if (cepNumero >= 12510002 && cepNumero <= 12515001) {
+  novoFrete = 10;
+} else if (cepNumero >= 12515002 && cepNumero <= 12520001) {
+  novoFrete = 15;
+} else if (cepNumero >= 12520002 && cepNumero <= 12524999) {
+  novoFrete = 20;
+} else {
+  Alert.alert("CEP fora da área de entrega");
+  novoFrete = 40;
+}
+
+setFreteCalculado(novoFrete);
     } catch (err) {
       Alert.alert("Erro ao buscar CEP");
       console.error(err);
@@ -397,7 +420,7 @@ const alterarQuantidade = (id, op) => {
       <Text style={styles.resumoLabel}>Subtotal:</Text>
       <Text style={styles.resumoValor}>R$ {totalProdutos.toFixed(2)}</Text>
       <Text style={styles.resumoLabel}>Frete:</Text>
-      <Text style={styles.resumoValor}>R$ {freteCalculado.toFixed(2)}</Text>
+      <Text style={styles.resumoValor}>R$ {freteCalculado !== null ? freteCalculado.toFixed(2) : "---"}</Text>
       <Text style={styles.resumoLabel}>Total:</Text>
       <Text style={styles.resumoValor}>R$ {totalComFrete}</Text>
     </View>
