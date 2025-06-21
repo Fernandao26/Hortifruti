@@ -61,24 +61,54 @@ export default function PerfilScreen() {
     navigation.goBack();
   };
   const escolherImagem = async () => {
-    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-    const { status: galeriaStatus } = await MediaLibrary.requestPermissionsAsync();
-  
-    if (cameraStatus !== "granted" || galeriaStatus !== "granted") {
-      Alert.alert("Permissão necessária", "É preciso permitir o acesso à câmera e à galeria.");
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      alert("Permissão para acessar a galeria é necessária!");
       return;
     }
   
-    const resultado = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 1,
+      quality: 0.5,
     });
   
-    if (!resultado.canceled) {
-      setFotoLocal(resultado.assets[0].uri);
-      setFotoAlterada(true);
+    if (!result.canceled) {
+      const uri = result.assets[0].uri;
+  
+      // Converter URI para Base64
+      const base64 = await convertUriToBase64(uri);
+  
+      // Salvar no Firestore
+      await salvarFotoNoFirestore(base64);
+    }
+  };
+  const convertUriToBase64 = async (uri) => {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result); // Base64 completo
+      reader.onerror = (error) => reject(error);
+      reader.readAsDataURL(blob); // Converte blob para base64
+    });
+  };
+  const salvarFotoNoFirestore = async (base64Image) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error("Usuário não autenticado");
+  
+      const userDocRef = doc(db, "users", user.uid);
+      await updateDoc(userDocRef, {
+        fotoBase64: base64Image, // Salva como string no Firestore
+      });
+  
+      console.log("Foto salva no Firestore");
+      setFotoLocal(base64Image); // Atualiza estado local
+    } catch (error) {
+      console.error("Erro ao salvar foto no Firestore:", error);
+      Alert.alert("Erro", "Não foi possível salvar a foto.");
     }
   };
   const salvarFotoPerfil = async () => {
