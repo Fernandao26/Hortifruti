@@ -49,7 +49,11 @@ export default function CarrinhoScreen() {
   const [enderecosSalvos, setEnderecosSalvos] = useState([]);
 
   const CEP_LOJA = "12507050";
-
+  useEffect(() => {
+    if (cep && cep.length === 8) {
+      buscarEnderecoPorCEP(cep);
+    }
+  }, [cep]);
   // Função para agrupar os produtos por fornecedor
   const agruparPorFornecedor = (itens) => {
     if (!Array.isArray(itens)) return {};
@@ -100,21 +104,24 @@ export default function CarrinhoScreen() {
       carregarCarrinho(); // Recarrega carrinho sempre que a tela for aberta
     }, [])
   );
-
   const fetchEnderecoUsuario = async () => {
     try {
       const uid = auth.currentUser.uid;
       const snap = await getDoc(doc(db, "users", uid));
       const data = snap.data() || {};
+  
       setEnderecoUser(data.endereco || "");
       setNumeroUser(data.numero || "");
       setBairroUser(data.bairro || "");
-      const cepSalvo = data.cep || "";
-    setCep(cepSalvo); // Salva no estado do CEP
-    
-    if (cepSalvo.length === 8) {
-      await buscarEnderecoPorCEP(cepSalvo); // Calcula o frete
-    }
+  
+      const cepOriginal = data.cep || "";
+  
+      setCep(cepOriginal); // ✅ Atualiza o estado `cep` com o original
+  
+      if (cepOriginal.length === 8) {
+        await buscarEnderecoPorCEP(cepOriginal); // ✅ Recalcula o frete com o CEP original
+      }
+  
     } catch (err) {
       console.error("Erro ao carregar endereço:", err);
     }
@@ -137,7 +144,21 @@ export default function CarrinhoScreen() {
   const removerEndereco = async (id) => {
     try {
       await deleteDoc(doc(db, "enderecos", id));
-      buscarEnderecosDoUsuario();
+      await buscarEnderecosDoUsuario();
+  
+      // Força recarregar o CEP original do usuário
+      await fetchEnderecoUsuario(); // ✅ Atualiza o CEP do usuário
+  
+      // Garante que o frete seja recalculado com o CEP original
+      const uid = auth.currentUser.uid;
+      const snap = await getDoc(doc(db, "users", uid));
+      const data = snap.data() || {};
+      const cepOriginal = data.cep || "";
+  
+      if (cepOriginal.length === 8) {
+        await buscarEnderecoPorCEP(cepOriginal); // ✅ Frete calculado com CEP original
+      }
+  
     } catch (error) {
       console.error("Erro ao remover endereço:", error);
       Alert.alert("Erro ao remover endereço");
