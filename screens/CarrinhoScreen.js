@@ -169,7 +169,8 @@ export default function CarrinhoScreen() {
     carrinho.reduce((sum, item) => sum + item.preco * item.quantidade, 0);
 
   const totalProdutos = calcularTotalCarrinho();
-  const totalComFrete = (totalProdutos + freteCalculado).toFixed(2);
+  const taxaApp = totalProdutos * 0.02; // 2% do subtotal
+  const totalComFrete = (totalProdutos + taxaApp + freteCalculado).toFixed(2);
 
 // Função chamada pelos botões "+" e "-"
 const alterarQuantidade = (id, op) => {
@@ -440,6 +441,8 @@ setFreteCalculado(novoFrete);
     <View style={styles.resumoContainer}>
       <Text style={styles.resumoLabel}>Subtotal:</Text>
       <Text style={styles.resumoValor}>R$ {totalProdutos.toFixed(2)}</Text>
+      <Text style={styles.resumoLabel}>Taxa de Serviço(2%):</Text>
+      <Text style={styles.resumoValor}>R$ {taxaApp.toFixed(2)}</Text>
       <Text style={styles.resumoLabel}>Frete:</Text>
       <Text style={styles.resumoValor}>R$ {freteCalculado !== null ? freteCalculado.toFixed(2) : "---"}</Text>
       <Text style={styles.resumoLabel}>Total:</Text>
@@ -450,7 +453,7 @@ setFreteCalculado(novoFrete);
     {carrinho.length > 0 && (
       <TouchableOpacity
         style={styles.continuarButton}
-        onPress={() => navigation.navigate("Pagamento", { carrinho })}
+        onPress={() => navigation.navigate("Pagamento", { carrinho,frete: freteCalculado,cep: cep })}
       >
         <Text style={styles.continuarButtonText}>IR PARA PAGAMENTO</Text>
       </TouchableOpacity>
