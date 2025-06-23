@@ -35,7 +35,7 @@ export default function LoginScreen({ navigation }) {
         senha
       );
       const user = userCredential.user;
-
+     
       const userDocRef = doc(db, "users", user.uid);
       const userDocSnap = await getDoc(userDocRef);
 

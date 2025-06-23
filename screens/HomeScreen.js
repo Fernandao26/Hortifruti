@@ -175,8 +175,7 @@ const carregarCarrinho = async () => {
       typeof item.imagem === "string" && item.imagem.trim() !== ""
         ? item.imagem
         : "https://via.placeholder.com/150";
-    console.log("ID do fornecedor:", item.fornecedor);
-    console.log("Nome da empresa:", fornecedores[item.fornecedor]);
+  
     const comprado = carrinho[item.id] !== undefined;
     return (
       <View style={styles.itemContainer}>
