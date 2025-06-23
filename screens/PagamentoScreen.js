@@ -71,6 +71,7 @@ const PagamentoScreen = ({ route }) => {
         // Limpeza do listener quando o componente é desmontado
         return () => unsubscribeAuth();
     }, []); // Rodar apenas uma vez na montagem do componente
+    console.log('User auth state:', user); // user deve conter id, token, etc.
 
     // --- FUNÇÃO PARA FINALIZAR O PEDIDO ---
     const finalizarPedido = async () => {
