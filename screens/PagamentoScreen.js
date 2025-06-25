@@ -226,7 +226,7 @@ const PagamentoScreen = ({ route }) => {
             text: "OK",
             onPress: () => {
               Alert.alert("Pedido realizado com sucesso!");
-              navigation.navigate("OrderConfirmation", {
+              navigation.navigate("PagamentoProcessado", {
                 orderId: orderId,
                 paymentId: paymentId,
                 status: "pending_payment",

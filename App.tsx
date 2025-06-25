@@ -20,7 +20,7 @@ import AvaliacaoScreen from "./screens/AvaliacaoScreen";
 import PerfilScreen from "./screens/PerfilScreen";
 import AjudaScreen from "./screens/AjudaScreen";
 import AdminScreen from "./screens/AdminScreen";
-
+import PagamentoProcessado from "./screens/PagamentoProcessado.js"
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -67,6 +67,7 @@ export default function App() {
             <Stack.Screen name="Perfil" component={PerfilScreen} />
             <Stack.Screen name="Ajuda" component={AjudaScreen} />
             <Stack.Screen name="Admin" component={AdminScreen} />
+            <Stack.Screen name="PagamentoProcessado" component={PagamentoProcessado} />
           </Stack.Navigator>
         </NavigationContainer>
       </PaperProvider>
