@@ -27,7 +27,8 @@ import {
   where,
   deleteDoc,
 } from "firebase/firestore";
-
+import { hp, wp } from "../src/utils/responsive";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 export default function CarrinhoScreen() {
   const route = useRoute();
   const navigation = useNavigation();
@@ -70,38 +71,38 @@ export default function CarrinhoScreen() {
     return agruparPorFornecedor(carrinho);
   }, [carrinho]);
 
- // Carregar carrinho do Firebase
- const carregarCarrinho = async () => {
-  try {
-    const uid = auth.currentUser?.uid;
-    if (!uid) return;
+  // Carregar carrinho do Firebase
+  const carregarCarrinho = async () => {
+    try {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
 
-    const q = query(collection(db, "carrinho"), where("uid", "==", uid));
-    const snapshot = await getDocs(q);
+      const q = query(collection(db, "carrinho"), where("uid", "==", uid));
+      const snapshot = await getDocs(q);
 
-    const lista = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    setCarrinho(lista);
-  } catch (error) {
-    console.error("Erro ao carregar carrinho:", error);
-  }
-};
- // Função para atualizar quantidade no Firebase
- const atualizarQuantidadeNoFirebase = async (itemId, novaQuantidade) => {
-  try {
-    const itemRef = doc(db, "carrinho", itemId);
-    await updateDoc(itemRef, {
-      quantidade: novaQuantidade,
-    });
-  } catch (error) {
-    console.error("Erro ao atualizar quantidade:", error);
-  }
-};
+      const lista = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setCarrinho(lista);
+    } catch (error) {
+      console.error("Erro ao carregar carrinho:", error);
+    }
+  };
+  // Função para atualizar quantidade no Firebase
+  const atualizarQuantidadeNoFirebase = async (itemId, novaQuantidade) => {
+    try {
+      const itemRef = doc(db, "carrinho", itemId);
+      await updateDoc(itemRef, {
+        quantidade: novaQuantidade,
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar quantidade:", error);
+    }
+  };
   useFocusEffect(
     useCallback(() => {
-      carregarCarrinho(); 
+      carregarCarrinho();
     }, [])
   );
   const fetchEnderecoUsuario = async () => {
@@ -109,19 +110,18 @@ export default function CarrinhoScreen() {
       const uid = auth.currentUser.uid;
       const snap = await getDoc(doc(db, "users", uid));
       const data = snap.data() || {};
-  
+
       setEnderecoUser(data.endereco || "");
       setNumeroUser(data.numero || "");
       setBairroUser(data.bairro || "");
-  
+
       const cepOriginal = data.cep || "";
-  
+
       setCep(cepOriginal); // ✅ Atualiza o estado `cep` com o original
-  
+
       if (cepOriginal.length === 8) {
         await buscarEnderecoPorCEP(cepOriginal); // ✅ Recalcula o frete com o CEP original
       }
-  
     } catch (err) {
       console.error("Erro ao carregar endereço:", err);
     }
@@ -145,20 +145,19 @@ export default function CarrinhoScreen() {
     try {
       await deleteDoc(doc(db, "enderecos", id));
       await buscarEnderecosDoUsuario();
-  
+
       // Força recarregar o CEP original do usuário
       await fetchEnderecoUsuario(); // ✅ Atualiza o CEP do usuário
-  
+
       // Garante que o frete seja recalculado com o CEP original
       const uid = auth.currentUser.uid;
       const snap = await getDoc(doc(db, "users", uid));
       const data = snap.data() || {};
       const cepOriginal = data.cep || "";
-  
+
       if (cepOriginal.length === 8) {
         await buscarEnderecoPorCEP(cepOriginal); // ✅ Frete calculado com CEP original
       }
-  
     } catch (error) {
       console.error("Erro ao remover endereço:", error);
       Alert.alert("Erro ao remover endereço");
@@ -172,23 +171,23 @@ export default function CarrinhoScreen() {
   const taxaApp = totalProdutos * 0.02; // 2% do subtotal
   const totalComFrete = (totalProdutos + taxaApp + freteCalculado).toFixed(2);
 
-// Função chamada pelos botões "+" e "-"
-const alterarQuantidade = (id, op) => {
-  setCarrinho((prev) =>
-    prev.map((item) => {
-      if (item.id === id) {
-        const qtd = op === "mais" ? item.quantidade + 1 : item.quantidade - 1;
-        const novaQtd = Math.max(1, qtd);
+  // Função chamada pelos botões "+" e "-"
+  const alterarQuantidade = (id, op) => {
+    setCarrinho((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const qtd = op === "mais" ? item.quantidade + 1 : item.quantidade - 1;
+          const novaQtd = Math.max(1, qtd);
 
-        // Atualiza no Firebase
-        atualizarQuantidadeNoFirebase(id, novaQtd);
+          // Atualiza no Firebase
+          atualizarQuantidadeNoFirebase(id, novaQtd);
 
-        return { ...item, quantidade: novaQtd };
-      }
-      return item;
-    })
-  );
-};
+          return { ...item, quantidade: novaQtd };
+        }
+        return item;
+      })
+    );
+  };
   const removerItem = async (itemId) => {
     try {
       await deleteDoc(doc(db, "carrinho", itemId));
@@ -203,7 +202,6 @@ const alterarQuantidade = (id, op) => {
       Alert.alert("Erro", "Não foi possível remover o item.");
     }
   };
-  
 
   // Renderizar cada item do carrinho
   const renderItem = ({ item }) => (
@@ -240,7 +238,7 @@ const alterarQuantidade = (id, op) => {
         onPress={() => removerItem(item.id)}
         style={styles.removeButton}
       >
-        <Text style={styles.removeText}>🗑️</Text>
+        <Image source={require("../img/Minus.png")} style={styles.removeText} />
       </TouchableOpacity>
     </View>
   );
@@ -261,7 +259,9 @@ const alterarQuantidade = (id, op) => {
 
   const buscarEnderecoPorCEP = async (cepDigitado) => {
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${cepDigitado}/json/`); 
+      const response = await fetch(
+        `https://viacep.com.br/ws/${cepDigitado}/json/`
+      );
       const data = await response.json();
       if (data.erro) {
         Alert.alert("CEP não encontrado");
@@ -274,26 +274,26 @@ const alterarQuantidade = (id, op) => {
       setEstadoInput(data.uf || "");
 
       // Converter CEP para número
-const cepNumero = parseInt(cepDigitado);
+      const cepNumero = parseInt(cepDigitado);
 
-let novoFrete;
+      let novoFrete;
 
-if (cepNumero >= 12500001 && cepNumero <= 12505001) {
-  novoFrete = 3; // Frete grátis
-} else if (cepNumero >= 12505002 && cepNumero <= 12510001) {
-  novoFrete = 5;
-} else if (cepNumero >= 12510002 && cepNumero <= 12515001) {
-  novoFrete = 10;
-} else if (cepNumero >= 12515002 && cepNumero <= 12520001) {
-  novoFrete = 15;
-} else if (cepNumero >= 12520002 && cepNumero <= 12524999) {
-  novoFrete = 20;
-} else {
-  Alert.alert("CEP fora da área de entrega");
-  novoFrete = 40;
-}
+      if (cepNumero >= 12500001 && cepNumero <= 12505001) {
+        novoFrete = 3; // Frete grátis
+      } else if (cepNumero >= 12505002 && cepNumero <= 12510001) {
+        novoFrete = 5;
+      } else if (cepNumero >= 12510002 && cepNumero <= 12515001) {
+        novoFrete = 10;
+      } else if (cepNumero >= 12515002 && cepNumero <= 12520001) {
+        novoFrete = 15;
+      } else if (cepNumero >= 12520002 && cepNumero <= 12524999) {
+        novoFrete = 20;
+      } else {
+        Alert.alert("CEP fora da área de entrega");
+        novoFrete = 40;
+      }
 
-setFreteCalculado(novoFrete);
+      setFreteCalculado(novoFrete);
     } catch (err) {
       Alert.alert("Erro ao buscar CEP");
       console.error(err);
@@ -333,157 +333,219 @@ setFreteCalculado(novoFrete);
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
-    {/* Seção de Endereço */}
-    <Text style={styles.title}>Endereço de Entrega</Text>
+      <Text style={styles.carrinho}>Carrinho</Text>
+      <View style={styles.enderecoContainer}>
+        <TouchableOpacity
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
 
-    {enderecosSalvos.length > 0 &&
-      enderecosSalvos.map((end) => (
-        <View key={end.id} style={styles.enderecoCard}>
-          <Text>{`${end.endereco}, ${end.numero} - ${end.bairro}`}</Text>
-          <Text>{`${end.cidade} - ${end.estado}, CEP ${end.cep}`}</Text>
-          <View style={styles.enderecoActions}>
-            <TouchableOpacity
-              onPress={() => selecionarEndereco(end)}
-              style={styles.usarBtn}
-            >
-              <Text style={styles.btnText}>Usar este endereço</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => removerEndereco(end.id)}
-              style={styles.apagarBtn}
-            >
-              <Text style={styles.btnText}>Apagar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      ))}
-
-    {!editandoEndereco ? (
-      <>
-        <Text>{`${enderecoUser}, ${numeroUser}, ${bairroUser}`}</Text>
-        <TouchableOpacity onPress={() => setEditandoEndereco(true)}>
-          <Text style={styles.editarEndereco}>Adicionar Novo Endereço</Text>
-        </TouchableOpacity>
-      </>
-    ) : (
-      <>
-        <TextInput
-          placeholder="CEP"
-          style={styles.input}
-          value={cep}
-          keyboardType="numeric"
-          onChangeText={(value) => {
-            setCep(value);
-            if (value.length === 8) buscarEnderecoPorCEP(value);
+            alignItems: "center",
+            marginBottom: hp("0.7"),
           }}
-        />
-        <TextInput
-          placeholder="Número"
-          style={styles.input}
-          value={numeroInput}
-          onChangeText={setNumeroInput}
-        />
-        <TextInput
-          placeholder="Rua"
-          style={styles.input}
-          value={enderecoInput}
-          editable={false}
-        />
-        <TextInput
-          placeholder="Bairro"
-          style={styles.input}
-          value={bairroInput}
-          editable={false}
-        />
-        <TextInput
-          placeholder="Cidade"
-          style={styles.input}
-          value={cidadeInput}
-          editable={false}
-        />
-        <TextInput
-          placeholder="Estado"
-          style={styles.input}
-          value={estadoInput}
-          editable={false}
-        />
-
-        <View style={styles.buttonRow}>
-          <TouchableOpacity
-            onPress={() => setEditandoEndereco(false)}
-            style={[styles.button, { backgroundColor: "#aaa" }]}
-          >
-            <Text style={styles.buttonText}>Voltar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={salvarEndereco}
-            style={styles.button}
-          >
-            <Text style={styles.buttonText}>Salvar Endereço</Text>
-          </TouchableOpacity>
-        </View>
-      </>
-    )}
-
-     {/* Lista de Produtos Agrupados */}
-     {Object.entries(carrinhoAgrupado).length > 0 ? (
-        Object.entries(carrinhoAgrupado).map(([fornecedor, itens]) => (
-          <View key={fornecedor} style={styles.fornecedorGroup}>
-            <Text style={styles.fornecedorTitle}>🧺 Fornecedor: {fornecedor}</Text>
-            {itens.map((item) => renderItem({ item }))}
+        >
+          <Text style={styles.title}>Endereço de Entrega </Text>
+          <Icon name="home-city-outline" size={wp("6")} color="#69A461" />
+        </TouchableOpacity>
+        {/* Exibe endereços salvos */}
+        {enderecosSalvos.length > 0
+          ? enderecosSalvos.map((end) => (
+              <View key={end.id} style={styles.enderecoCard}>
+                <View style={styles.enderecoInfo}>
+                  <Text style={styles.enderecoTexto}>
+                    {end.endereco}, {end.numero}
+                  </Text>
+                  <Text style={styles.enderecoTexto}>{end.bairro}</Text>
+                  <Text style={styles.enderecoTexto}>
+                    {end.cidade} - {end.estado}, CEP {end.cep}
+                  </Text>
+                </View>
+                <View style={styles.enderecoAcoes}>
+                  <TouchableOpacity
+                    style={styles.enderecoBotaoUsar}
+                    onPress={() => selecionarEndereco(end)}
+                  >
+                    <Text style={styles.enderecoBotaoTexto}>Usar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.enderecoBotaoExcluir}
+                    onPress={() => removerEndereco(end.id)}
+                  >
+                    <Text style={styles.enderecoBotaoTexto}>Excluir</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          : null}
+        {/* Mostra o endereço padrão do usuário */}
+        {!editandoEndereco && !enderecosSalvos.length ? (
+          <View style={styles.enderecoDefault}>
+            <View>
+              <Icon name="map-marker-outline" size={wp("7")} color="#69A461" />
+            </View>
+            <Text
+              style={styles.enderecoTexto}
+            >{`${enderecoUser}, ${numeroUser}, ${bairroUser}`}</Text>
           </View>
-        ))
-    ) : (
-      <Text style={styles.emptyCart}>Seu carrinho está vazio.</Text>
-    )}
+        ) : null}
+        {/* Botão para adicionar novo endereço */}
+        {!editandoEndereco && !enderecosSalvos.length ? (
+          <TouchableOpacity
+            style={styles.botaoAdicionarEndereco}
+            onPress={() => setEditandoEndereco(true)}
+          >
+            <Text style={{ color: "#007bff", paddingLeft: hp(3.5) }}>
+              + Adicionar novo endereço
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+        {/* Formulário de edição de endereço */}
+        {editandoEndereco && (
+          <View style={styles.formularioEndereco}>
+            <TextInput
+              placeholder="CEP"
+              style={styles.input}
+              value={cep}
+              keyboardType="numeric"
+              onChangeText={(value) => {
+                setCep(value);
+                if (value.length === 8) buscarEnderecoPorCEP(value);
+              }}
+            />
+            <TextInput
+              placeholder="Número"
+              style={styles.input}
+              value={numeroInput}
+              onChangeText={setNumeroInput}
+            />
+            <TextInput
+              placeholder="Rua"
+              style={styles.input}
+              value={enderecoInput}
+              editable={false}
+            />
+            <TextInput
+              placeholder="Bairro"
+              style={styles.input}
+              value={bairroInput}
+              editable={false}
+            />
+            <TextInput
+              placeholder="Cidade"
+              style={styles.input}
+              value={cidadeInput}
+              editable={false}
+            />
+            <TextInput
+              placeholder="Estado"
+              style={styles.input}
+              value={estadoInput}
+              editable={false}
+            />
 
-    {/* Resumo do Carrinho */}
-    <View style={styles.resumoContainer}>
-      <Text style={styles.resumoLabel}>Subtotal:</Text>
-      <Text style={styles.resumoValor}>R$ {totalProdutos.toFixed(2)}</Text>
-      <Text style={styles.resumoLabel}>Taxa de Serviço(2%):</Text>
-      <Text style={styles.resumoValor}>R$ {taxaApp.toFixed(2)}</Text>
-      <Text style={styles.resumoLabel}>Frete:</Text>
-      <Text style={styles.resumoValor}>R$ {freteCalculado !== null ? freteCalculado.toFixed(2) : "---"}</Text>
-      <Text style={styles.resumoLabel}>Total:</Text>
-      <Text style={styles.resumoValor}>R$ {totalComFrete}</Text>
-    </View>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                onPress={() => setEditandoEndereco(false)}
+                style={[styles.button, { backgroundColor: "#ccc" }]}
+              >
+                <Text style={styles.buttonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={salvarEndereco} style={styles.button}>
+                <Text style={styles.buttonText}>Salvar Endereço</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </View>
 
-    {/* Botão Ir para Pagamento */}
-    {carrinho.length > 0 && (
-      <TouchableOpacity
-        style={styles.continuarButton}
-        onPress={() => navigation.navigate("Pagamento", { carrinho,frete: freteCalculado,cep: cep })}
+      <View
+        style={{
+          backgroundColor: "#d3d3d3",
+          marginHorizontal: wp("-4"),
+          marginTop: hp("1"),
+          paddingTop: hp("2"),
+        }}
       >
-        <Text style={styles.continuarButtonText}>IR PARA PAGAMENTO</Text>
-      </TouchableOpacity>
-    )}
-  </ScrollView>
-);
+        {Object.entries(carrinhoAgrupado).length > 0 ? (
+          Object.entries(carrinhoAgrupado).map(([fornecedor, itens]) => (
+            <View key={fornecedor} style={styles.fornecedorGroup}>
+              <Text style={styles.fornecedorTitle}>
+                🧺 Fornecedor: {fornecedor}
+              </Text>
+              {itens.map((item) => renderItem({ item }))}
+            </View>
+          ))
+        ) : (
+          <Text style={styles.emptyCart}>Seu carrinho está vazio.</Text>
+        )}
+      </View>
+      {/* Resumo do Carrinho */}
+      <View style={styles.resumoContainer}>
+        <Text style={styles.resumoLabel}>Subtotal:</Text>
+        <Text style={styles.resumoValor}>R$ {totalProdutos.toFixed(2)}</Text>
+        <Text style={styles.resumoLabel}>Taxa de Serviço(2%):</Text>
+        <Text style={styles.resumoValor}>R$ {taxaApp.toFixed(2)}</Text>
+        <Text style={styles.resumoLabel}>Frete:</Text>
+        <Text style={styles.resumoValor}>
+          R$ {freteCalculado !== null ? freteCalculado.toFixed(2) : "---"}
+        </Text>
+        <Text style={styles.resumoLabel}>Total:</Text>
+        <Text style={styles.resumoValor}>R$ {totalComFrete}</Text>
+      </View>
+      {/* Botão Ir para Pagamento */}
+      {carrinho.length > 0 && (
+        <TouchableOpacity
+          style={styles.continuarButton}
+          onPress={() =>
+            navigation.navigate("Pagamento", {
+              carrinho,
+              frete: freteCalculado,
+              cep: cep,
+            })
+          }
+        >
+          <Text style={styles.continuarButtonText}>IR PARA PAGAMENTO</Text>
+        </TouchableOpacity>
+      )}
+    </ScrollView>
+  );
 }
 
 // Estilos
 const styles = StyleSheet.create({
   scrollContent: {
-    padding: 16,
+    padding: wp("4"),
     backgroundColor: "#fff",
   },
   title: {
-    fontSize: 20,
+    fontSize: hp("1.8"),
     fontWeight: "bold",
-    marginBottom: 16,
+    paddingHorizontal: hp("0.5"),
+    paddingVertical: "auto",
   },
+  carrinho: {
+    fontSize: hp("2.8"),
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: hp("2.8"),
+    marginBottom: hp("1.6"),
+  },
+
   enderecoCard: {
     padding: 12,
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "blue",
   },
   enderecoActions: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: "blue",
   },
   usarBtn: {
     flex: 1,
@@ -506,6 +568,15 @@ const styles = StyleSheet.create({
   editarEndereco: {
     color: "#007bff",
     marginTop: 8,
+  },
+  enderecoDefault: {
+    flexDirection: "row",
+    marginBottom: hp("1"),
+  },
+  enderecoTexto: {
+    paddingLeft: hp("1"),
+    paddingRight: hp("8"),
+    color: "gray",
   },
   input: {
     borderWidth: 1,
@@ -536,7 +607,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 8,
     padding: 12,
-    marginBottom: 12,
+    marginBottom: hp("1"),
     elevation: 2,
     alignItems: "center",
   },
@@ -589,13 +660,13 @@ const styles = StyleSheet.create({
   },
   removeText: {
     color: "#e74c3c",
-    fontSize: 18,
+    fontSize: hp("4"),
   },
   fornecedorGroup: {
-    marginBottom: 20,
-    backgroundColor: "#f8f8f8",
-    padding: 12,
-    borderRadius: 8,
+    marginBottom: hp("2"),
+    backgroundColor: "#fff",
+    paddingHorizontal: wp("5"),
+    paddingVertical: wp("4"),
   },
   fornecedorTitle: {
     fontSize: 16,
