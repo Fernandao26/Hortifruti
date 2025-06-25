@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Provider as PaperProvider, DefaultTheme } from "react-native-paper";
@@ -44,26 +45,31 @@ export default function App() {
   };
 
   return (
-    <PaperProvider theme={theme}>
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-          <Stack.Screen name="Home" component={HomeScreen} />
-          <Stack.Screen name="RedefinirSenha" component={RedefinirSenha} />
-          <Stack.Screen name="Carrinho" component={CarrinhoScreen} />
-          <Stack.Screen name="Fornecedor" component={FornecedorScreen} />
-          <Stack.Screen name="PromoverAdmin" component={PromoverAdminScreen} />
-          <Stack.Screen name="Pagamento" component={PagamentoScreen} />
-          <Stack.Screen name="Dicas" component={DicasScreen} />
-          <Stack.Screen name="Receitas" component={ReceitasScreen} />
-          <Stack.Screen name="Pedidos" component={PedidosScreen} />
-          <Stack.Screen name="Avaliacao" component={AvaliacaoScreen} />
-          <Stack.Screen name="Perfil" component={PerfilScreen} />
-          <Stack.Screen name="Ajuda" component={AjudaScreen} />
-          <Stack.Screen name="Admin" component={AdminScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </PaperProvider>
+    <SafeAreaProvider>
+      <PaperProvider theme={theme}>
+        <NavigationContainer>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="RedefinirSenha" component={RedefinirSenha} />
+            <Stack.Screen name="Carrinho" component={CarrinhoScreen} />
+            <Stack.Screen name="Fornecedor" component={FornecedorScreen} />
+            <Stack.Screen
+              name="PromoverAdmin"
+              component={PromoverAdminScreen}
+            />
+            <Stack.Screen name="Pagamento" component={PagamentoScreen} />
+            <Stack.Screen name="Dicas" component={DicasScreen} />
+            <Stack.Screen name="Receitas" component={ReceitasScreen} />
+            <Stack.Screen name="Pedidos" component={PedidosScreen} />
+            <Stack.Screen name="Avaliacao" component={AvaliacaoScreen} />
+            <Stack.Screen name="Perfil" component={PerfilScreen} />
+            <Stack.Screen name="Ajuda" component={AjudaScreen} />
+            <Stack.Screen name="Admin" component={AdminScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </PaperProvider>
+    </SafeAreaProvider>
   );
 }

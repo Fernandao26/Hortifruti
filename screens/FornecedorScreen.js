@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Dimensions,
+  Platform, // Importar Platform para ajustes específicos de iOS/Android
 } from "react-native";
 import {
   collection,
@@ -28,15 +29,17 @@ import { useNavigation } from "@react-navigation/native";
 import { getAuth, signOut } from "firebase/auth";
 import { BarChart, PieChart } from "react-native-chart-kit";
 import { Picker } from "@react-native-picker/picker";
-import ProdutosAtivos from "../ProdutosAtivos"; // Verifique se esses imports são usados, caso contrário, remova-os
-import EditarProduto from "../EditarProduto"; // Verifique se esses imports são usados, caso contrário, remova-os
-import MenuFornecedor from "../MenuFornecedor"; // Verifique se esses imports são usados, caso contrário, remova-os
+// Verifique se esses imports são usados, caso contrário, remova-os para manter o código limpo:
+// import ProdutosAtivos from "../ProdutosAtivos";
+// import EditarProduto from "../EditarProduto";
+// import MenuFornecedor from "../MenuFornecedor";
+
 import { wp, hp } from "../src/utils/responsive";
-import { SafeAreaView } from "react-native";
+// Importe useSafeAreaInsets da nova biblioteca
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Altura padrão do seu menu inferior (ajuste conforme o design final)
-// Usaremos isso para calcular o paddingBottom
-const MENU_INFERIOR_HEIGHT = hp("8%"); // Aproximadamente 8% da altura da tela
+const MENU_INFERIOR_HEIGHT = hp("6%"); // Aproximadamente 8% da altura da tela
 
 export default function FornecedorScreen() {
   const navigation = useNavigation();
@@ -56,6 +59,9 @@ export default function FornecedorScreen() {
   const [tipoPreco, setTipoPreco] = useState("unidade");
   const [tipoEstoque, setTipoEstoque] = useState("unidade");
   const user = getAuth().currentUser;
+
+  // Obtém os insets da área segura do dispositivo
+  const insets = useSafeAreaInsets();
 
   const precoFormatado = useMemo(() => {
     if (preco === "") return "";
@@ -82,7 +88,7 @@ export default function FornecedorScreen() {
     };
 
     verificarPermissao();
-  }, [user]); // Adicionado 'user' como dependência para garantir que rode quando o user for carregado
+  }, [user]);
 
   const carregarProdutos = async () => {
     const produtosRef = collection(db, "produtos");
@@ -295,7 +301,7 @@ export default function FornecedorScreen() {
     return (
       <ScrollView
         contentContainerStyle={{
-          paddingBottom: MENU_INFERIOR_HEIGHT + hp("3%"), // Padding para o menu inferior
+          paddingBottom: MENU_INFERIOR_HEIGHT + insets.bottom + hp("5%"), // Padding para o menu inferior
           paddingHorizontal: wp("4%"), // Padding horizontal para o dashboard
           paddingTop: hp("2%"), // Padding superior
         }}
@@ -308,8 +314,8 @@ export default function FornecedorScreen() {
               { data: [produtosAtivos.length, produtosVendidos.length, total] },
             ],
           }}
-          width={Dimensions.get("window").width - wp("8%")} // Ajustado para respeitar o padding horizontal
-          height={hp("25%")} // Altura responsiva
+          width={Dimensions.get("window").width - wp("8%")}
+          height={hp("25%")}
           chartConfig={{
             backgroundColor: "#fff",
             backgroundGradientFrom: "#fff",
@@ -318,42 +324,32 @@ export default function FornecedorScreen() {
             color: (opacity = 1) => `rgba(0, 128, 0, ${opacity})`,
             labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
           }}
-          style={{ marginVertical: hp("2%") }} // Espaçamento vertical para o gráfico
+          style={{ marginVertical: hp("2%") }}
         />
         <PieChart
           data={pieData}
-          width={Dimensions.get("window").width - wp("8%")} // Ajustado para respeitar o padding horizontal
-          height={hp("25%")} // Altura responsiva
+          width={Dimensions.get("window").width - wp("8%")}
+          height={hp("25%")}
           chartConfig={{
             color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
           }}
           accessor="population"
           backgroundColor="transparent"
-          paddingLeft="15" // Ajuste este padding se precisar mover o gráfico
-          style={{ marginVertical: hp("2%") }} // Espaçamento vertical para o gráfico
+          paddingLeft="15"
+          style={{ marginVertical: hp("2%") }}
         />
       </ScrollView>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {telaAtual === "ativos" && (
         <View style={styles.ativosContainer}>
           {/* Header */}
           <View style={styles.ativosHeader}>
             <Text style={styles.ativosTitle}>Produtos Cadastrados</Text>
-            {/* O botão "+ Adicionar produto" foi movido para fora do View styles.ativosHeader */}
-            {/* para ter um controle de espaçamento próprio */}
           </View>
-
-          {/* Botão de Adicionar Produto */}
-          <TouchableOpacity
-            style={styles.addButton} // Estilo para o botão com fundo
-            onPress={() => setTelaAtual("cadastro")}
-          >
-            <Text style={styles.addButtonText}>+ Adicionar produto</Text>
-          </TouchableOpacity>
 
           {/* Filtros por Categoria */}
           <View style={styles.filterBar}>
@@ -393,6 +389,13 @@ export default function FornecedorScreen() {
               </TouchableOpacity>
             ))}
           </View>
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => setTelaAtual("cadastro")}
+          >
+            <Text style={{ fontSize: hp("2.5%"), color: "gray" }}> + </Text>
+            <Text style={styles.addButtonText}> Adicionar produto</Text>
+          </TouchableOpacity>
 
           {/* Lista de Produtos */}
           <FlatList
@@ -433,7 +436,7 @@ export default function FornecedorScreen() {
               <Text style={styles.emptyText}>Nenhum produto encontrado.</Text>
             }
             contentContainerStyle={{
-              paddingBottom: MENU_INFERIOR_HEIGHT + hp("3%"), // Espaço para menu inferior
+              paddingBottom: MENU_INFERIOR_HEIGHT + insets.bottom + hp("10%"), // Espaço dinâmico para menu inferior
               paddingTop: hp("1.5%"), // Espaço acima da lista
             }}
           />
@@ -446,9 +449,9 @@ export default function FornecedorScreen() {
           keyExtractor={(item) => item.id}
           numColumns={2}
           contentContainerStyle={{
-            padding: wp("4%"), // Padding geral
-            paddingBottom: MENU_INFERIOR_HEIGHT + hp("3%"), // Espaço para menu inferior
-            paddingTop: hp("2%"), // Padding superior
+            padding: wp("4%"),
+            paddingBottom: MENU_INFERIOR_HEIGHT + insets.bottom + hp("2%"), // Espaço dinâmico para menu inferior
+            paddingTop: hp("2%"),
           }}
           columnWrapperStyle={{ justifyContent: "space-between" }}
           renderItem={renderCard}
@@ -461,9 +464,9 @@ export default function FornecedorScreen() {
       {telaAtual === "cadastro" && (
         <ScrollView
           contentContainerStyle={{
-            padding: wp("4%"), // Padding geral
-            paddingBottom: MENU_INFERIOR_HEIGHT + hp("3%"), // Espaço para menu inferior
-            paddingTop: hp("2%"), // Padding superior
+            padding: wp("4%"),
+            paddingBottom: MENU_INFERIOR_HEIGHT + insets.bottom + hp("2%"), // Espaço dinâmico para menu inferior
+            paddingTop: hp("2%"),
           }}
         >
           <Text style={styles.titulo}>Cadastro de Produto</Text>
@@ -560,59 +563,72 @@ export default function FornecedorScreen() {
 
       {telaAtual === "dashboard" && renderDashboard()}
 
-      {/* Menu Inferior */}
-      <View style={styles.menuInferior}>
+      {/* Menu Inferior - Agora a posição `bottom` é dinâmica */}
+      <View style={[styles.menuInferior, { bottom: insets.bottom }]}>
         <TouchableOpacity
           onPress={() => setTelaAtual("ativos")}
           style={styles.menuItem}
         >
-          <Image source={require("../img/logo.png")} style={styles.menuIcon} />
-          <Text style={styles.menuItemText}>Ativos</Text>
+          {/* Certifique-se de que esses caminhos de imagem estão corretos */}
+          <Image
+            source={require("../img/ativos.png")}
+            style={styles.menuIcon}
+          />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setTelaAtual("vendidos")}
           style={styles.menuItem}
         >
-          <Image source={require("../img/logo.png")} style={styles.menuIcon} />
-          <Text style={styles.menuItemText}>Vendidos</Text>
+          <Image
+            source={require("../img/Vendas.png")}
+            style={styles.menuIcon}
+          />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setTelaAtual("cadastro")}
           style={styles.menuItem}
         >
-          <Image source={require("../img/logo.png")} style={styles.menuIcon} />
-          <Text style={styles.menuItemText}>Cadastro</Text>
+          <Image
+            source={require("../img/cadastroo.png")}
+            style={styles.menuIcon}
+          />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setTelaAtual("dashboard")}
           style={styles.menuItem}
         >
-          <Image source={require("../img/logo.png")} style={styles.menuIcon} />
-          <Text style={styles.menuItemText}>Dashboard</Text>
+          <Image
+            source={require("../img/dashboard.png")}
+            style={styles.menuIcon}
+          />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => navigation.navigate("Perfil")}
           style={styles.menuItem}
         >
-          <Image source={require("../img/logo.png")} style={styles.menuIcon} />
-          <Text style={styles.menuItemText}>Perfil</Text>
+          <Image
+            source={require("../img/perfill.png")}
+            style={styles.menuIcon}
+          />
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f0f0f0", // Cor de fundo geral do app
+    backgroundColor: "#fff", // Cor de fundo geral do app
+    borderWidth: 1,
+    // paddingTop: insets.top será aplicado diretamente no componente
   },
   titulo: {
     fontSize: hp("2.8%"),
     fontWeight: "bold",
     textAlign: "center",
-    marginBottom: hp("3%"), // Aumentado o espaçamento abaixo do título
-    marginTop: hp("1%"), // Adicionado um pequeno espaçamento acima
+    marginBottom: hp("3%"),
+    marginTop: hp("1%"),
     color: "#333",
   },
   input: {
@@ -621,22 +637,22 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: hp("1.5%"),
     paddingHorizontal: wp("4%"),
-    marginBottom: hp("2%"), // Aumentado o espaçamento abaixo dos inputs
+    marginBottom: hp("2%"),
     backgroundColor: "#fff",
     fontSize: hp("1.8%"),
   },
   label: {
     fontWeight: "600",
-    marginBottom: hp("0.8%"), // Aumentado um pouco o espaçamento abaixo do label
-    marginTop: hp("1.5%"), // Adicionado espaçamento acima do label
+    marginBottom: hp("0.8%"),
+    marginTop: hp("1.5%"),
     fontSize: hp("1.8%"),
     color: "#333",
   },
   filtroWrapper: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: wp("3%"), // Espaçamento entre os botões de filtro
-    marginBottom: hp("2.5%"), // Aumentado o espaçamento abaixo dos wrappers de filtro
+    gap: wp("3%"),
+    marginBottom: hp("2.5%"),
     alignItems: "flex-start",
     alignContent: "center",
   },
@@ -713,7 +729,7 @@ const styles = StyleSheet.create({
     marginTop: hp("1%"),
   },
   botaoEditar: {
-    backgroundColor: "#3498db",
+    backgroundColor: "#DBE8F2",
     paddingVertical: hp("0.8%"),
     paddingHorizontal: wp("3%"),
     borderRadius: 6,
@@ -722,7 +738,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   botaoExcluir: {
-    backgroundColor: "#e74c3c",
     paddingVertical: hp("0.8%"),
     paddingHorizontal: wp("3%"),
     borderRadius: 6,
@@ -730,7 +745,6 @@ const styles = StyleSheet.create({
     marginLeft: wp("1%"),
     alignItems: "center",
   },
-  // Estilos para a tela de Produtos Ativos
   ativosContainer: {
     flex: 1,
     paddingHorizontal: wp("4%"),
@@ -738,41 +752,44 @@ const styles = StyleSheet.create({
   },
   ativosHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
-    marginBottom: hp("2%"), // Espaço abaixo do cabeçalho
+    marginBottom: hp("2%"),
   },
   ativosTitle: {
     fontSize: hp("2.6%"),
     fontWeight: "bold",
     color: "#333",
+
+    justifyContent: "center",
   },
   addButton: {
-    backgroundColor: "#e0e0e0", // Um tom mais claro para o botão de adicionar
-    paddingHorizontal: wp("4%"),
-    paddingVertical: hp("1.2%"), // Aumentado o padding vertical para o botão
-    borderRadius: 8,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    alignSelf: "flex-start", // Para que o botão não ocupe a largura total
-    marginBottom: hp("2%"), // Espaço abaixo do botão
+    backgroundColor: "#DBE8F2",
+    paddingHorizontal: wp("2%"),
+    paddingVertical: hp("0.4%"),
+    borderRadius: 10,
+    elevation: 1,
+    flexDirection: "row",
+    alignItems: "Center",
+
+    alignSelf: "flex-end",
+    marginBottom: hp("1%"),
   },
   addButtonText: {
-    color: "#333",
+    color: "black",
     fontWeight: "bold",
-    fontSize: hp("1.8%"),
+    fontSize: hp("1.5%"),
+    alignSelf: "center",
   },
   filterBar: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginBottom: hp("2.5%"), // Espaço abaixo da barra de filtros
+    marginBottom: hp("1.8%"),
   },
   filterButton: {
     flex: 1,
     marginHorizontal: wp("1%"),
-    paddingVertical: hp("1%"),
+    paddingVertical: hp("0.6%"),
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 20,
@@ -791,12 +808,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   productsList: {
-    // paddingBottom será adicionado dinamicamente para respeitar o menuInferior
+    // paddingBottom será adicionado dinamicamente no componente
   },
   productCard: {
     backgroundColor: "#fff",
     borderRadius: 10,
-    marginBottom: hp("1.5%"), // Aumentado o espaçamento entre os cards
+    marginBottom: hp("1.5%"),
     padding: wp("4%"),
     flexDirection: "row",
     alignItems: "center",
@@ -818,30 +835,30 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: hp("2%"),
     fontWeight: "600",
-    marginBottom: hp("0.8%"), // Espaçamento abaixo do nome do produto
+    marginBottom: hp("0.8%"),
   },
   productPrice: {
     fontSize: hp("1.8%"),
     color: "#27ae60",
     fontWeight: "bold",
-    marginBottom: hp("0.8%"), // Espaçamento abaixo do preço
+    marginBottom: hp("0.8%"),
   },
   productStock: {
     fontSize: hp("1.6%"),
     color: "#666",
-    marginTop: hp("0.5%"), // Espaçamento acima do estoque
+    marginTop: hp("0.5%"),
   },
   productActions: {
     marginLeft: wp("4%"),
-    justifyContent: "space-around", // Para espaçar os botões Editar/Excluir
-    height: hp("10%"), // Garantir altura suficiente para os botões
+    justifyContent: "space-around",
+    height: hp("10%"),
   },
   actionButton: {
-    backgroundColor: "#f0f0f0",
+    backgroundColor: "#DBE8F2",
     paddingVertical: hp("0.8%"),
     paddingHorizontal: wp("3%"),
     borderRadius: 6,
-    marginBottom: hp("0.5%"), // Pequeno espaçamento entre os botões de ação
+    marginBottom: hp("0.5%"),
     elevation: 1,
   },
   actionText: {
@@ -852,49 +869,50 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: "center",
     color: "#999",
-    marginTop: hp("5%"), // Aumentado o espaçamento para o texto de vazio
+    marginTop: hp("5%"),
     fontSize: hp("1.8%"),
   },
   semProdutos: {
     textAlign: "center",
     color: "#999",
-    marginTop: hp("5%"), // Aumentado o espaçamento para o texto de vazio
+    marginTop: hp("5%"),
     fontSize: hp("1.8%"),
-    width: "100%", // Ocupar toda a largura para centralizar
+    width: "100%",
   },
   // Menu Inferior e seus itens
   menuInferior: {
-    position: "absolute",
-    bottom: 0, // Alinha ao fundo da SafeAreaView
-    left: 0,
-    right: 0,
+    position: "absolute", // <-- ADICIONE ISSO
+    left: 0, // <-- ADICIONE ISSO
+    right: 0, // <-- ADICIONE ISSO
+    // bottom: não precisa aqui, pois será sobrescrito pelo style dinâmico acima
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    paddingVertical: hp("1%"), // Padding interno do menu
+    paddingVertical: hp("1%"), // <-- Use hp() aqui para o padding
     backgroundColor: "#fff",
     borderTopWidth: 1,
-    borderColor: "#e0e0e0", // Cor da borda
-    height: MENU_INFERIOR_HEIGHT, // Altura definida no topo do arquivo
-    elevation: 8, // Sombra para Android
+    borderColor: "#e0e0e0", // Sugestão para cor de borda
+    height: MENU_INFERIOR_HEIGHT, // <-- Garanta que use a constante aqui
+    elevation: 0, // Sombra para Android
     shadowColor: "#000", // Sombra para iOS
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+
   menuItem: {
-    flex: 1, // Cada item ocupa espaço igual
+    flex: 1,
     alignItems: "center",
-    paddingVertical: hp("0.5%"), // Padding vertical interno
+    paddingVertical: hp("0.5%"),
   },
   menuIcon: {
-    width: wp("6%"), // Tamanho do ícone
-    height: wp("6%"),
-    marginBottom: hp("0.5%"), // Espaço entre ícone e texto
-    tintColor: "#4CAF50", // Cor do ícone
+    width: wp("6%"),
+    height: wp("9%"),
+
+    tintColor: "#4CAF50",
   },
   menuItemText: {
-    fontSize: hp("1.4%"), // Tamanho da fonte do texto do menu
+    fontSize: hp("1.4%"),
     color: "#333",
     textAlign: "center",
   },

@@ -56,7 +56,6 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     padding: 20,
-    backgroundColor: "#fff",
   },
   title: {
     fontSize: 24,
