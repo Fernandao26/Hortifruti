@@ -1,31 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Button, Clipboard } from 'react-native'; // Clipboard adicionado
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Linking, Clipboard } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Icon from "react-native-vector-icons/MaterialCommunityIcons"; // Ícone para QR Code
-import { getAuth } from 'firebase/auth';
-// Importe auth, db e functions do seu arquivo firebaseConfig
-import { auth, db, functions } from '../firebaseConfig'; // Garanta que 'auth' está aqui
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
-// Importe os módulos do Firestore e Functions novamente, caso firebaseConfig não os exporte diretamente como instâncias
+import { auth, db, functions } from '../firebaseConfig';
+
 import { doc, getDoc, collection, addDoc } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from "firebase/functions";
 
 const PagamentoScreen = ({ route }) => {
-    // Parâmetros de rota: Desestruture tudo que é esperado de `route.params`
     const { carrinho, frete, cep } = route.params || {};
-
     const navigation = useNavigation();
 
-    // ESTADOS LOCAIS
     const [isProcessingOrder, setIsProcessingOrder] = useState(false);
-    const [currentUser, setCurrentUser] = useState(null); // Estado para o usuário autenticado (do onAuthStateChanged)
+    const [currentUser, setCurrentUser] = useState(null);
+    const [idToken, setIdToken] = useState(null); // Novo estado para o token ID
     const [metodoPagamento, setMetodoPagamento] = useState('Pix');
     const [enderecoCompleto, setEnderecoCompleto] = useState("");
-    const [usuarioDataFromFirestore, setUsuarioDataFromFirestore] = useState(null); // Estado para dados adicionais do usuário do Firestore
-    const [qrCodePix, setQrCodePix] = useState(null); // Para armazenar o QR Code (se decidir exibi-lo)
+    const [usuarioDataFromFirestore, setUsuarioDataFromFirestore] = useState(null);
+    const [qrCodePix, setQrCodePix] = useState(null);
 
-
-    // CALCULA VALORES DERIVADOS
     const calcularSubtotal = () =>
         carrinho.reduce((sum, item) => sum + item.preco * item.quantidade, 0);
 
@@ -37,20 +31,26 @@ const PagamentoScreen = ({ route }) => {
         new Set(carrinho.map((item) => item.nomeFornecedor || item.fornecedor || 'Desconhecido'))
     );
 
-    // --- useEffect para OBSERVAR O ESTADO DE AUTENTICAÇÃO E PEGAR DADOS ADICIONAIS ---
     useEffect(() => {
         const unsubscribeAuth = auth.onAuthStateChanged(async (user) => {
-            setCurrentUser(user); // Atualiza o estado do usuário autenticado
-
+            setCurrentUser(user);
             if (user) {
                 console.log("PagamentoScreen: onAuthStateChanged - Usuário logado detectado:", user.email, "UID:", user.uid);
-
-                // Carregar dados adicionais do usuário do Firestore APENAS SE TIVER UM USUÁRIO
+                
                 try {
-                    const userDoc = await getDoc(doc(db, "users", user.uid)); // Usa 'users' como nome da coleção
+                    const tokenResult = await user.getIdTokenResult(true);
+                    setIdToken(tokenResult.token);
+                    console.log("PagamentoScreen: Token ID obtido:", tokenResult.token.substring(0, 30) + '...');
+                } catch (tokenError) {
+                    console.error("PagamentoScreen: Erro ao obter token ID no onAuthStateChanged:", tokenError);
+                    setIdToken(null);
+                }
+
+                try {
+                    const userDoc = await getDoc(doc(db, "users", user.uid));
                     if (userDoc.exists()) {
                         const data = userDoc.data();
-                        setUsuarioDataFromFirestore(data); // Armazena dados adicionais
+                        setUsuarioDataFromFirestore(data);
                         const fullAddress = `${data.endereco}, ${data.numero} - ${data.bairro}\n${data.cidade} - ${data.estado}, CEP ${data.cep}`;
                         setEnderecoCompleto(fullAddress);
                     } else {
@@ -59,113 +59,138 @@ const PagamentoScreen = ({ route }) => {
                 } catch (error) {
                     console.error("PagamentoScreen: Erro ao carregar dados do usuário do Firestore:", error);
                 }
-
             } else {
                 console.warn("PagamentoScreen: Nenhum usuário logado. Botão de finalizar desabilitado.");
-                setUsuarioDataFromFirestore(null); // Limpa dados se o usuário deslogar
+                setCurrentUser(null);
+                setIdToken(null);
+                setUsuarioDataFromFirestore(null);
                 setEnderecoCompleto("");
-                // Opcional: navigation.replace('Login'); // Descomente se quiser forçar o login
             }
         });
-
-        // Limpeza do listener quando o componente é desmontado
         return () => unsubscribeAuth();
-    }, []); // Rodar apenas uma vez na montagem do componente
-    console.log('User auth state:', user); // user deve conter id, token, etc.
+    }, []);
 
-    // --- FUNÇÃO PARA FINALIZAR O PEDIDO ---
     const finalizarPedido = async () => {
         console.log("PagamentoScreen: Finalizar Pedido clicado.");
         console.log("PagamentoScreen: currentUser (estado local):", currentUser ? currentUser.uid : "NÃO DEFINIDO/LOGADO");
 
-        // Verifica se já está processando ou se não há usuário logado
         if (isProcessingOrder) {
             console.warn("Pedido já está sendo processado.");
             return;
         }
-        if (!currentUser) { // Usa o estado `currentUser` que é atualizado pelo `onAuthStateChanged`
-            Alert.alert("Erro de Login", "Você precisa estar logado para finalizar o pedido. Por favor, faça login ou cadastre-se.");
-            console.error("Tentativa de finalizar pedido sem usuário logado (currentUser é null).");
+        if (!currentUser || !idToken) { 
+            Alert.alert("Erro de Login", "Você precisa estar logado para finalizar o pedido. Por favor, faça login ou cadastre-se e aguarde a validação.");
+            console.error("Tentativa de finalizar pedido sem usuário logado ou token ID.");
             return;
         }
 
-        setIsProcessingOrder(true); // Inicia o estado de processamento
+        setIsProcessingOrder(true);
 
         try {
-            // 1. Salva o pedido no Firestore ANTES de chamar a Cloud Function (seu fluxo original)
-            await addDoc(collection(db, "pedidos"), {
-                userId: currentUser.uid, // Usa o UID do currentUser
+            const pedidoRef = await addDoc(collection(db, "pedidos"), {
+                userId: currentUser.uid,
                 fornecedores: fornecedoresUnicos,
-                subtotal: parseFloat(calcularSubtotal().toFixed(2)), // Garante que o subtotal é um número formatado
+                carrinho: carrinho,
+                subtotal: parseFloat(calcularSubtotal().toFixed(2)),
                 frete: freteCalculado,
-                taxaServico: taxaServico,
+                taxaServico: taxaServico, // <<-- CORRIGIDO AQUI
                 total: parseFloat(totalFinal),
                 formaPagamento: metodoPagamento,
                 status: "Pendente",
                 criadoEm: new Date(),
+                nomeCliente: currentUser.displayName || (usuarioDataFromFirestore ? usuarioDataFromFirestore.nome : "Cliente"),
+                emailCliente: currentUser.email,
+                enderecoEntrega: enderecoCompleto,
             });
-            console.log("Usuário atual:", auth.currentUser);
-            if (auth.currentUser) {
-              const token = await auth.currentUser.getIdToken();
-              console.log("Token JWT:", token);
-            }
-            // 2. Chama a Cloud Function para criar o PIX (APENAS UMA CHAMADA)
-            const criarPixCloudFunction = httpsCallable(functions, "criarPixHortifruti");
-            
-            const result = await criarPixCloudFunction({
-                carrinho: carrinho,
+            const orderId = pedidoRef.id;
+
+            console.log("Pedido salvo no Firestore com ID:", orderId);
+
+            // --- LIMPANDO O CARRINHO PARA ENVIO À CLOUD FUNCTION ---
+            const cleanedCarrinho = carrinho.map(item => {
+                const newItem = { ...item };
+                if (newItem.timestamp instanceof Object && 'seconds' in newItem.timestamp) {
+                    newItem.timestamp = newItem.timestamp.toDate().toISOString();
+                } else if (newItem.timestamp) {
+                    delete newItem.timestamp;
+                }
+                return newItem;
+            });
+            // --- FIM DA LIMPEZA ---
+
+            const callCriarPixHortifruti = httpsCallable(functions, "criarPixHortifruti");
+
+            // --- payloadParaCloudFunction construído com o cleanedCarrinho ---
+            const payloadParaCloudFunction = {
+                idToken: idToken,
+                carrinho: cleanedCarrinho, // <--- USA O CARRINHO LIMPO AQUI
                 frete: freteCalculado,
                 taxaServico: taxaServico,
-                total: parseFloat(totalFinal), // Envia o total como número
-                nomeCliente: currentUser.displayName || currentUser.email || (usuarioDataFromFirestore ? usuarioDataFromFirestore.nome : "Cliente"), // Usa nome do Firestore se disponível
-            });
+                total: parseFloat(totalFinal),
+                nomeCliente: currentUser.displayName || currentUser.email || (usuarioDataFromFirestore ? usuarioDataFromFirestore.nome : "Cliente"),
+                external_reference: orderId,
+            };
+            console.log("Payload enviado para a Cloud Function:", payloadParaCloudFunction);
+            // -----------------------------------------------------------
 
-            const { qrCode, paymentId } = result.data; // Recebe o QR Code e o Payment ID da Cloud Function
+            // --- AQUI É ONDE USAMOS O PAYLOAD CORRETO ---
+            const result = await callCriarPixHortifruti(payloadParaCloudFunction);
+            // --- FIM DA CORREÇÃO ---
 
-            // 3. Mostra o QR Code para o usuário e oferece para copiar
+            const { qrCode, paymentId } = result.data;
+
+            if (!qrCode || !paymentId) {
+                Alert.alert("Erro", "Não foi possível gerar o código PIX ou ID de pagamento.");
+                console.error("Resposta da Cloud Function incompleta:", result.data);
+                return;
+            }
+
+            console.log("PIX gerado. QR Code:", qrCode, "Payment ID:", paymentId);
+
             Alert.alert(
                 "PIX Gerado!",
                 `Escaneie o QR Code ou copie o código PIX:\n\n${qrCode}`,
                 [
                     {
                         text: "Copiar Código",
-                        onPress: () => Clipboard.setString(qrCode), // Copia o código PIX
+                        onPress: () => Clipboard.setString(qrCode),
                     },
                     {
                         text: "OK",
                         onPress: () => {
-                            Alert.alert("Pedido realizado com sucesso!"); // Seu alerta original
-                            navigation.navigate("Home"); // Volta para a tela inicial
+                            Alert.alert("Pedido realizado com sucesso!");
+                            navigation.navigate("OrderConfirmation", { orderId: orderId, paymentId: paymentId, status: "pending_payment" });
                         }
                     },
                 ]
             );
 
-            // Opcional: atualiza o estado local do QR Code (se for exibir imagem)
             setQrCodePix(qrCode);
 
         } catch (error) {
-            console.error("Erro ao finalizar pedido (cliente):", error.message, error.code, error.details); // Logs mais detalhados
+            console.error("Erro ao finalizar pedido (frontend):", error);
             let errorMessage = "Não foi possível finalizar o pedido. Tente novamente mais tarde.";
 
             if (error.code === 'functions/unauthenticated') {
                 errorMessage = "Você precisa estar logado para completar esta ação.";
-            } else if (error.code === 'functions/failed-precondition' && error.details && error.details.includes("Nenhum fornecedor válido encontrado para o split.")) {
-                errorMessage = "Não foi possível encontrar todos os fornecedores. Contate o suporte.";
+            } else if (error.code === 'functions/invalid-argument') {
+                 errorMessage = error.message;
+            } else if (error.code === 'functions/failed-precondition') {
+                errorMessage = error.message || "Pré-condição falhou. Contate o suporte.";
             } else if (error.code === 'functions/internal') {
-                // Se a Cloud Function lançou um erro 'internal', use a mensagem que ela enviou
-                errorMessage = error.details?.message || "Ocorreu um erro interno no servidor. Tente novamente.";
+                errorMessage = error.message || "Ocorreu um erro interno no servidor. Tente novamente.";
+            } else if (error.message && error.message.includes("Network request failed")) {
+                errorMessage = "Erro de conexão. Verifique sua internet.";
             }
             Alert.alert("Erro", errorMessage);
 
         } finally {
-            setIsProcessingOrder(false); // Finaliza o processamento
+            setIsProcessingOrder(false);
         }
     };
 
     return (
         <View style={styles.container}>
-            {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Text style={styles.backButtonText}>←</Text>
@@ -174,14 +199,12 @@ const PagamentoScreen = ({ route }) => {
                 <Text style={styles.clearButton}>Frutiway</Text>
             </View>
 
-            {/* Endereço Completo */}
             {enderecoCompleto ? (
                 <Text style={styles.summaryValue}>{enderecoCompleto}</Text>
             ) : (
                 <Text style={styles.summaryValue}>Endereço não encontrado</Text>
             )}
 
-            {/* Fornecedores */}
             <View style={styles.fornecedorSection}>
                 <Text style={styles.fornecedorName}>
                     {fornecedoresUnicos.length > 1 ? 'Fornecedores:' : 'Fornecedor:'} {fornecedoresUnicos.join(', ')}
@@ -191,7 +214,6 @@ const PagamentoScreen = ({ route }) => {
                 </TouchableOpacity>
             </View>
 
-            {/* Lista de Produtos */}
             <View style={styles.produtosSection}>
                 <Text style={styles.produtosTitle}>Produtos</Text>
                 {carrinho && carrinho.length > 0 ? (
@@ -212,7 +234,6 @@ const PagamentoScreen = ({ route }) => {
                 <View style={styles.divider} />
             </View>
 
-            {/* Pagamento */}
             <View style={styles.paymentSection}>
                 <Text style={styles.paymentTitle}>Pagamento pelo app</Text>
                 <View style={styles.paymentMethod}>
@@ -224,7 +245,6 @@ const PagamentoScreen = ({ route }) => {
                 </View>
             </View>
 
-            {/* Resumo */}
             <View style={styles.summarySection}>
                 <Text style={styles.summaryTitle}>Resumo de valores</Text>
                 <View style={styles.summaryRow}>
@@ -245,15 +265,20 @@ const PagamentoScreen = ({ route }) => {
                 </View>
             </View>
 
-            {/* Botão Finalizar Pedido */}
-            <TouchableOpacity style={styles.confirmButton} onPress={finalizarPedido}>
-        <Text style={styles.confirmButtonText}>Finalizar pedido • R$ {totalFinal}</Text>
-      </TouchableOpacity>
-            
+            <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={finalizarPedido}
+                disabled={isProcessingOrder || !currentUser || !idToken}
+            >
+                {isProcessingOrder ? (
+                    <ActivityIndicator color="#fff" />
+                ) : (
+                    <Text style={styles.confirmButtonText}>Finalizar pedido • R$ {totalFinal}</Text>
+                )}
+            </TouchableOpacity>
         </View>
     );
 };
-
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff', padding: 16 },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },

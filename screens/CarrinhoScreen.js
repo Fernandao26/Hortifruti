@@ -101,7 +101,7 @@ export default function CarrinhoScreen() {
 };
   useFocusEffect(
     useCallback(() => {
-      carregarCarrinho(); // Recarrega carrinho sempre que a tela for aberta
+      carregarCarrinho(); 
     }, [])
   );
   const fetchEnderecoUsuario = async () => {
