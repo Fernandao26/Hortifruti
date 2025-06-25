@@ -307,7 +307,7 @@ export default function FornecedorScreen() {
         }}
       >
         <Text style={styles.titulo}>Dashboard</Text>
-        <BarChart
+        {/* <BarChart
           data={{
             labels: ["À Venda", "Vendidos", "Total"],
             datasets: [
@@ -337,6 +337,16 @@ export default function FornecedorScreen() {
           backgroundColor="transparent"
           paddingLeft="15"
           style={{ marginVertical: hp("2%") }}
+        /> */}
+        <Image
+          source={require("../img/grafico1.png")}
+          style={styles.imageDash}
+          resizeMode="contain"
+        />
+        <Image
+          source={require("../img/grafico2.png")}
+          style={styles.imageDash}
+          resizeMode="contain"
         />
       </ScrollView>
     );
@@ -620,7 +630,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff", // Cor de fundo geral do app
-    borderWidth: 1,
+    paddingBottom: hp("10"),
     // paddingTop: insets.top será aplicado diretamente no componente
   },
   titulo: {
@@ -710,6 +720,11 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
     borderRadius: 8,
     marginBottom: hp("1%"),
+  },
+  imageDash: {
+    width: wp("90%"),
+    height: hp("35%"),
+    alignSelf: "center",
   },
   nome: {
     fontSize: hp("1.8%"),
@@ -825,7 +840,7 @@ const styles = StyleSheet.create({
   productImage: {
     width: wp("22%"),
     height: hp("10%"),
-    resizeMode: "cover",
+    resizeMode: "contain",
     borderRadius: 8,
     marginRight: wp("4%"),
   },
@@ -891,6 +906,7 @@ const styles = StyleSheet.create({
     paddingVertical: hp("1%"), // <-- Use hp() aqui para o padding
     backgroundColor: "#fff",
     borderTopWidth: 1,
+    borderBottomWidth: 1,
     borderColor: "#e0e0e0", // Sugestão para cor de borda
     height: MENU_INFERIOR_HEIGHT, // <-- Garanta que use a constante aqui
     elevation: 0, // Sombra para Android

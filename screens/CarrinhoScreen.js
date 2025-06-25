@@ -29,6 +29,7 @@ import {
 } from "firebase/firestore";
 import { hp, wp } from "../src/utils/responsive";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { SafeAreaView } from "react-native-safe-area-context";
 export default function CarrinhoScreen() {
   const route = useRoute();
   const navigation = useNavigation();
@@ -332,182 +333,227 @@ export default function CarrinhoScreen() {
   }, []);
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
-      <Text style={styles.carrinho}>Carrinho</Text>
-      <View style={styles.enderecoContainer}>
-        <TouchableOpacity
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
+    <SafeAreaView>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.carrinho}>Carrinho</Text>
+        <View style={styles.enderecoContainer}>
+          <TouchableOpacity
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
 
-            alignItems: "center",
-            marginBottom: hp("0.7"),
+              alignItems: "center",
+              marginBottom: hp("0.7"),
+            }}
+          >
+            <Text style={styles.title}>Endereço de Entrega </Text>
+            <Icon name="home-city-outline" size={wp("6")} color="#69A461" />
+          </TouchableOpacity>
+          {/* Exibe endereços salvos */}
+          {enderecosSalvos.length > 0
+            ? enderecosSalvos.map((end) => (
+                <View key={end.id} style={styles.enderecoCard}>
+                  <View style={styles.enderecoInfo}>
+                    <Text style={styles.enderecoTexto}>
+                      {end.endereco}, {end.numero}
+                    </Text>
+                    <Text style={styles.enderecoTexto}>{end.bairro}</Text>
+                    <Text style={styles.enderecoTexto}>
+                      {end.cidade} - {end.estado}, CEP {end.cep}
+                    </Text>
+                  </View>
+                  <View style={styles.enderecoAcoes}>
+                    <TouchableOpacity
+                      style={styles.enderecoBotaoUsar}
+                      onPress={() => selecionarEndereco(end)}
+                    >
+                      <Text style={styles.enderecoBotaoTexto}>Usar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.enderecoBotaoExcluir}
+                      onPress={() => removerEndereco(end.id)}
+                    >
+                      <Text style={styles.enderecoBotaoTexto}>Excluir</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
+            : null}
+          {/* Mostra o endereço padrão do usuário */}
+          {!editandoEndereco && !enderecosSalvos.length ? (
+            <View style={styles.enderecoDefault}>
+              <View>
+                <Icon
+                  name="map-marker-outline"
+                  size={wp("7")}
+                  color="#69A461"
+                />
+              </View>
+              <Text
+                style={styles.enderecoTexto}
+              >{`${enderecoUser}, ${numeroUser}, ${bairroUser}`}</Text>
+            </View>
+          ) : null}
+          {/* Botão para adicionar novo endereço */}
+          {!editandoEndereco && !enderecosSalvos.length ? (
+            <TouchableOpacity
+              style={styles.botaoAdicionarEndereco}
+              onPress={() => setEditandoEndereco(true)}
+            >
+              <Text style={{ color: "#007bff", paddingLeft: hp(3.5) }}>
+                + Adicionar novo endereço
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+          {/* Formulário de edição de endereço */}
+          {editandoEndereco && (
+            <View style={styles.formularioEndereco}>
+              <TextInput
+                placeholder="CEP"
+                style={styles.input}
+                value={cep}
+                keyboardType="numeric"
+                onChangeText={(value) => {
+                  setCep(value);
+                  if (value.length === 8) buscarEnderecoPorCEP(value);
+                }}
+              />
+              <TextInput
+                placeholder="Número"
+                style={styles.input}
+                value={numeroInput}
+                onChangeText={setNumeroInput}
+              />
+              <TextInput
+                placeholder="Rua"
+                style={styles.input}
+                value={enderecoInput}
+                editable={false}
+              />
+              <TextInput
+                placeholder="Bairro"
+                style={styles.input}
+                value={bairroInput}
+                editable={false}
+              />
+              <TextInput
+                placeholder="Cidade"
+                style={styles.input}
+                value={cidadeInput}
+                editable={false}
+              />
+              <TextInput
+                placeholder="Estado"
+                style={styles.input}
+                value={estadoInput}
+                editable={false}
+              />
+
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
+                  onPress={() => setEditandoEndereco(false)}
+                  style={[styles.button, { backgroundColor: "#ccc" }]}
+                >
+                  <Text style={styles.buttonText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={salvarEndereco}
+                  style={styles.button}
+                >
+                  <Text style={styles.buttonText}>Salvar Endereço</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+
+        <View
+          style={{
+            backgroundColor: "#d3d3d3",
+            marginHorizontal: wp("-4"),
+            marginTop: hp("1"),
+            paddingTop: hp("2"),
           }}
         >
-          <Text style={styles.title}>Endereço de Entrega </Text>
-          <Icon name="home-city-outline" size={wp("6")} color="#69A461" />
-        </TouchableOpacity>
-        {/* Exibe endereços salvos */}
-        {enderecosSalvos.length > 0
-          ? enderecosSalvos.map((end) => (
-              <View key={end.id} style={styles.enderecoCard}>
-                <View style={styles.enderecoInfo}>
-                  <Text style={styles.enderecoTexto}>
-                    {end.endereco}, {end.numero}
-                  </Text>
-                  <Text style={styles.enderecoTexto}>{end.bairro}</Text>
-                  <Text style={styles.enderecoTexto}>
-                    {end.cidade} - {end.estado}, CEP {end.cep}
-                  </Text>
-                </View>
-                <View style={styles.enderecoAcoes}>
-                  <TouchableOpacity
-                    style={styles.enderecoBotaoUsar}
-                    onPress={() => selecionarEndereco(end)}
-                  >
-                    <Text style={styles.enderecoBotaoTexto}>Usar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.enderecoBotaoExcluir}
-                    onPress={() => removerEndereco(end.id)}
-                  >
-                    <Text style={styles.enderecoBotaoTexto}>Excluir</Text>
-                  </TouchableOpacity>
-                </View>
+          {Object.entries(carrinhoAgrupado).length > 0 ? (
+            Object.entries(carrinhoAgrupado).map(([fornecedor, itens]) => (
+              <View key={fornecedor} style={styles.fornecedorGroup}>
+                <Text style={styles.fornecedorTitle}>
+                  <Icon name="store" size={hp("2.4")} color="gray" />{" "}
+                  Fornecedor: {fornecedor}
+                </Text>
+                {itens.map((item) => renderItem({ item }))}
               </View>
             ))
-          : null}
-        {/* Mostra o endereço padrão do usuário */}
-        {!editandoEndereco && !enderecosSalvos.length ? (
-          <View style={styles.enderecoDefault}>
-            <View>
-              <Icon name="map-marker-outline" size={wp("7")} color="#69A461" />
-            </View>
-            <Text
-              style={styles.enderecoTexto}
-            >{`${enderecoUser}, ${numeroUser}, ${bairroUser}`}</Text>
-          </View>
-        ) : null}
-        {/* Botão para adicionar novo endereço */}
-        {!editandoEndereco && !enderecosSalvos.length ? (
-          <TouchableOpacity
-            style={styles.botaoAdicionarEndereco}
-            onPress={() => setEditandoEndereco(true)}
-          >
-            <Text style={{ color: "#007bff", paddingLeft: hp(3.5) }}>
-              + Adicionar novo endereço
-            </Text>
-          </TouchableOpacity>
-        ) : null}
-        {/* Formulário de edição de endereço */}
-        {editandoEndereco && (
-          <View style={styles.formularioEndereco}>
-            <TextInput
-              placeholder="CEP"
-              style={styles.input}
-              value={cep}
-              keyboardType="numeric"
-              onChangeText={(value) => {
-                setCep(value);
-                if (value.length === 8) buscarEnderecoPorCEP(value);
-              }}
-            />
-            <TextInput
-              placeholder="Número"
-              style={styles.input}
-              value={numeroInput}
-              onChangeText={setNumeroInput}
-            />
-            <TextInput
-              placeholder="Rua"
-              style={styles.input}
-              value={enderecoInput}
-              editable={false}
-            />
-            <TextInput
-              placeholder="Bairro"
-              style={styles.input}
-              value={bairroInput}
-              editable={false}
-            />
-            <TextInput
-              placeholder="Cidade"
-              style={styles.input}
-              value={cidadeInput}
-              editable={false}
-            />
-            <TextInput
-              placeholder="Estado"
-              style={styles.input}
-              value={estadoInput}
-              editable={false}
-            />
-
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                onPress={() => setEditandoEndereco(false)}
-                style={[styles.button, { backgroundColor: "#ccc" }]}
-              >
-                <Text style={styles.buttonText}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={salvarEndereco} style={styles.button}>
-                <Text style={styles.buttonText}>Salvar Endereço</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-      </View>
-
-      <View
-        style={{
-          backgroundColor: "#d3d3d3",
-          marginHorizontal: wp("-4"),
-          marginTop: hp("1"),
-          paddingTop: hp("2"),
-        }}
-      >
-        {Object.entries(carrinhoAgrupado).length > 0 ? (
-          Object.entries(carrinhoAgrupado).map(([fornecedor, itens]) => (
-            <View key={fornecedor} style={styles.fornecedorGroup}>
-              <Text style={styles.fornecedorTitle}>
-                🧺 Fornecedor: {fornecedor}
+          ) : (
+            <Text style={styles.emptyCart}>Seu carrinho está vazio.</Text>
+          )}
+        </View>
+        {/* Resumo do Carrinho */}
+        <View style={styles.resumoContainer}>
+          {/* Subtotal */}
+          <View style={styles.resumoLinha}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Icon name="cart-outline" size={14} color="#69a461" />
+              <Text style={[styles.resumoLabel, { marginLeft: 4 }]}>
+                Subtotal
               </Text>
-              {itens.map((item) => renderItem({ item }))}
             </View>
-          ))
-        ) : (
-          <Text style={styles.emptyCart}>Seu carrinho está vazio.</Text>
+            <Text style={styles.resumoValor}>
+              R$ {totalProdutos.toFixed(2)}
+            </Text>
+          </View>
+
+          {/* Taxa */}
+          <View style={styles.resumoLinha}>
+            <TouchableOpacity
+              onPress={() => alert("Taxa de 2% cobrada pela plataforma")}
+            >
+              <Text style={styles.resumoLabel}>Taxa de Serviço (2%) ⓘ</Text>
+            </TouchableOpacity>
+            <Text style={styles.resumoValor}>R$ {taxaApp.toFixed(2)}</Text>
+          </View>
+
+          {/* Frete */}
+          <View style={styles.resumoLinha}>
+            <Text style={styles.resumoLabel}>Frete</Text>
+            <Text
+              style={[
+                styles.resumoValor,
+                freteCalculado === 0 && { color: "green" },
+              ]}
+            >
+              {freteCalculado === 0
+                ? "Grátis"
+                : freteCalculado
+                  ? `R$ ${freteCalculado.toFixed(2)}`
+                  : "---"}
+            </Text>
+          </View>
+
+          {/* Total */}
+          <View style={[styles.resumoLinha, styles.totalContainer]}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalValor}>R$ {totalComFrete}</Text>
+          </View>
+        </View>
+        {/* Botão Ir para Pagamento */}
+        {carrinho.length > 0 && (
+          <TouchableOpacity
+            style={styles.continuarButton}
+            onPress={() =>
+              navigation.navigate("Pagamento", {
+                carrinho,
+                frete: freteCalculado,
+                cep: cep,
+              })
+            }
+          >
+            <Text style={styles.continuarButtonText}>IR PARA PAGAMENTO</Text>
+          </TouchableOpacity>
         )}
-      </View>
-      {/* Resumo do Carrinho */}
-      <View style={styles.resumoContainer}>
-        <Text style={styles.resumoLabel}>Subtotal:</Text>
-        <Text style={styles.resumoValor}>R$ {totalProdutos.toFixed(2)}</Text>
-        <Text style={styles.resumoLabel}>Taxa de Serviço(2%):</Text>
-        <Text style={styles.resumoValor}>R$ {taxaApp.toFixed(2)}</Text>
-        <Text style={styles.resumoLabel}>Frete:</Text>
-        <Text style={styles.resumoValor}>
-          R$ {freteCalculado !== null ? freteCalculado.toFixed(2) : "---"}
-        </Text>
-        <Text style={styles.resumoLabel}>Total:</Text>
-        <Text style={styles.resumoValor}>R$ {totalComFrete}</Text>
-      </View>
-      {/* Botão Ir para Pagamento */}
-      {carrinho.length > 0 && (
-        <TouchableOpacity
-          style={styles.continuarButton}
-          onPress={() =>
-            navigation.navigate("Pagamento", {
-              carrinho,
-              frete: freteCalculado,
-              cep: cep,
-            })
-          }
-        >
-          <Text style={styles.continuarButtonText}>IR PARA PAGAMENTO</Text>
-        </TouchableOpacity>
-      )}
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -527,7 +573,7 @@ const styles = StyleSheet.create({
     fontSize: hp("2.8"),
     fontWeight: "bold",
     textAlign: "center",
-    marginTop: hp("2.8"),
+
     marginBottom: hp("1.6"),
   },
 
@@ -648,6 +694,41 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     fontWeight: "bold",
   },
+  resumoContainer: {
+    backgroundColor: "#f9f9f9",
+    borderRadius: 8,
+    padding: 16,
+    marginTop: 20,
+  },
+  resumoLinha: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  resumoLabel: {
+    color: "#555",
+    fontSize: 14,
+  },
+  resumoValor: {
+    color: "#333",
+    fontSize: 14,
+  },
+  totalContainer: {
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+    paddingTop: 12,
+    marginTop: 4,
+  },
+  totalLabel: {
+    fontWeight: "bold",
+    color: "#000",
+  },
+  totalValor: {
+    fontWeight: "bold",
+    color: "#000",
+    fontSize: 16,
+  },
+
   totalPrice: {
     marginTop: 6,
     fontWeight: "bold",
@@ -670,24 +751,11 @@ const styles = StyleSheet.create({
   },
   fornecedorTitle: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "400",
     marginBottom: 8,
+    color: "gray",
   },
-  resumoContainer: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: "#f9f9f9",
-    borderRadius: 8,
-    elevation: 2,
-  },
-  resumoLabel: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  resumoValor: {
-    fontSize: 16,
-    marginBottom: 8,
-  },
+
   continuarButton: {
     marginTop: 20,
     backgroundColor: "#4CAF50",
