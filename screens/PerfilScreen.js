@@ -43,6 +43,7 @@ export default function PerfilScreen() {
   const [nome, setNome] = useState("");
   const [sobrenome, setSobrenome] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [cpf, setCpf] = useState(""); // <-- NOVO ESTADO PARA CPF
   const [cep, setCep] = useState("");
   const [endereco, setEndereco] = useState("");
   const [numero, setNumero] = useState("");
@@ -142,6 +143,7 @@ export default function PerfilScreen() {
           setNome(dados.nome || "");
           setSobrenome(dados.sobrenome || "");
           setTelefone(dados.telefone || "");
+          setCpf(dados.cpf || ""); // <-- CARREGA CPF DO FIRESTORE
           setCep(dados.cep || "");
           setEndereco(dados.endereco || "");
           setNumero(dados.numero || "");
@@ -151,7 +153,7 @@ export default function PerfilScreen() {
           setEstado(dados.estado || "");
           setTipo(dados.tipo || "");
           setEmpresa(dados.empresa || "");
-          setFotoLocal(dados.fotoLocal || null); // ✅ Aqui carrega a imagem salva
+          setFotoLocal(dados.fotoLocal || null);
         }
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
@@ -168,6 +170,19 @@ export default function PerfilScreen() {
     return valor
       .replace(/\D/g, "")
       .replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+  };
+
+  const formatarCpf = (valor) => {
+    const cleanCpf = valor.replace(/\D/g, "");
+    if (cleanCpf.length <= 3) {
+      return cleanCpf;
+    } else if (cleanCpf.length <= 6) {
+      return `${cleanCpf.slice(0, 3)}.${cleanCpf.slice(3)}`;
+    } else if (cleanCpf.length <= 9) {
+      return `${cleanCpf.slice(0, 3)}.${cleanCpf.slice(3, 6)}.${cleanCpf.slice(6)}`;
+    } else {
+      return `${cleanCpf.slice(0, 3)}.${cleanCpf.slice(3, 6)}.${cleanCpf.slice(6, 9)}-${cleanCpf.slice(9, 11)}`;
+    }
   };
 
   const buscarEnderecoPorCep = async (cepDigitado) => {
@@ -193,6 +208,11 @@ export default function PerfilScreen() {
       Alert.alert("Digite um CEP válido com 8 números");
       return;
     }
+    const cleanCpf = cpf.replace(/\D/g, "");
+    if (cleanCpf.length !== 11) {
+      Alert.alert("Erro", "O CPF deve conter 11 dígitos numéricos.");
+      return;
+    }
 
     try {
       const uid = auth.currentUser.uid;
@@ -202,6 +222,7 @@ export default function PerfilScreen() {
         nome,
         sobrenome,
         telefone,
+        cpf: cleanCpf, // <-- SALVA CPF LIMPO NO FIRESTORE
         cep,
         endereco,
         numero,
@@ -217,7 +238,7 @@ export default function PerfilScreen() {
       setEditando(false);
       Alert.alert("Dados atualizados com sucesso!");
     } catch (error) {
-      Alert.alert("Erro ao salvar alterações");
+      Alert.alert("Erro ao salvar alterações", error.message);
     }
   };
 
@@ -381,16 +402,16 @@ export default function PerfilScreen() {
                   alignItems: "center",
                 }}
               >
-               <TouchableOpacity onPress={editando ? escolherImagem : null}>
-  <Image
-    source={
-      fotoLocal
-        ? { uri: fotoLocal }
-        : require("../img/frutigoprofile.png")
-    }
-    style={{ width: 170, height: 170, borderRadius: 85 , size: 160 }}
-  />
-</TouchableOpacity>
+                <TouchableOpacity onPress={editando ? escolherImagem : null}>
+                  <Image
+                    source={
+                      fotoLocal
+                        ? { uri: fotoLocal }
+                        : require("../img/frutigoprofile.png")
+                    }
+                    style={{ width: 170, height: 170, borderRadius: 85 , size: 160 }}
+                  />
+                </TouchableOpacity>
 
 
                 <TouchableOpacity
@@ -447,8 +468,6 @@ export default function PerfilScreen() {
           <View
             style={{
               marginHorizontal: 25,
-
-              // permite quebrar a linha
             }}
           >
             {tipo === "fornecedor" && (
@@ -499,6 +518,20 @@ export default function PerfilScreen() {
             ) : (
               <Text style={styles.valor}>{formatarTelefone(telefone)}</Text>
             )}
+            {/* NOVO CAMPO PARA CPF */}
+            <Text style={styles.label}>CPF</Text>
+            {editando ? (
+              <TextInput
+                value={formatarCpf(cpf)} // Aplica a formatação aqui
+                onChangeText={(texto) => setCpf(texto.replace(/\D/g, ""))} // Salva apenas dígitos
+                style={styles.input}
+                keyboardType="numeric"
+                maxLength={14} // 11 dígitos + 3 para formatação (pontos e traço)
+              />
+            ) : (
+              <Text style={styles.valor}>{formatarCpf(cpf)}</Text>
+            )}
+            {/* FIM NOVO CAMPO PARA CPF */}
             <Text style={styles.label}>CEP</Text>
             {editando ? (
               <TextInput
@@ -625,6 +658,7 @@ export default function PerfilScreen() {
     </KeyboardAvoidingView>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {

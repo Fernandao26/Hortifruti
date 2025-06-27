@@ -24,7 +24,7 @@ const PagamentoScreen = ({ route }) => {
 
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [idToken, setIdToken] = useState(null); // Novo estado para o token ID
+  const [idToken, setIdToken] = useState(null); 
   const [metodoPagamento, setMetodoPagamento] = useState("Pix");
   const [enderecoCompleto, setEnderecoCompleto] = useState("");
   const [usuarioDataFromFirestore, setUsuarioDataFromFirestore] =
@@ -80,7 +80,7 @@ const PagamentoScreen = ({ route }) => {
           const userDoc = await getDoc(doc(db, "users", user.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
-            setUsuarioDataFromFirestore(data);
+            setUsuarioDataFromFirestore(data); // <-- Aqui os dados do usuário, incluindo o CPF, são carregados
             const fullAddress = `${data.endereco}, ${data.numero} - ${data.bairro}\n${data.cidade} - ${data.estado}, CEP ${data.cep}`;
             setEnderecoCompleto(fullAddress);
           } else {
@@ -130,6 +130,20 @@ const PagamentoScreen = ({ route }) => {
       return;
     }
 
+    const cpfClienteRaw = usuarioDataFromFirestore?.cpf; // <-- CPF pego do estado (que veio do Firestore)
+    const cpfCliente = cpfClienteRaw ? String(cpfClienteRaw).replace(/\D/g, '') : null; // <-- CPF é limpo aqui
+
+    if (!cpfCliente || cpfCliente.length !== 11) {
+        Alert.alert(
+            "Erro de CPF", 
+            "Seu CPF não foi encontrado ou está inválido. Por favor, atualize seu perfil para adicionar um CPF válido (11 dígitos)."
+        );
+        console.error("CPF do cliente ausente ou inválido (não 11 dígitos numéricos). CPF recebido:", cpfClienteRaw);
+        setIsProcessingOrder(false);
+        return;
+    }
+    console.log("PagamentoScreen: CPF do cliente obtido e limpo:", cpfCliente);
+
     setIsProcessingOrder(true);
 
     try {
@@ -139,10 +153,10 @@ const PagamentoScreen = ({ route }) => {
         carrinho: carrinho,
         subtotal: parseFloat(calcularSubtotal().toFixed(2)),
         frete: freteCalculado,
-        taxaServico: taxaServico, // <<-- CORRIGIDO AQUI
+        taxaServico: taxaServico, 
         total: parseFloat(totalFinal),
         formaPagamento: metodoPagamento,
-        status: "Pendente",
+        status: "pending",
         criadoEm: new Date(),
         nomeCliente:
           currentUser.displayName ||
@@ -151,12 +165,12 @@ const PagamentoScreen = ({ route }) => {
             : "Cliente"),
         emailCliente: currentUser.email,
         enderecoEntrega: enderecoCompleto,
+        cpfCliente: cpfCliente, // <-- CPF é enviado para a Cloud Function aqui
       });
       const orderId = pedidoRef.id;
 
       console.log("Pedido salvo no Firestore com ID:", orderId);
 
-      // --- LIMPANDO O CARRINHO PARA ENVIO À CLOUD FUNCTION ---
       const cleanedCarrinho = carrinho.map((item) => {
         const newItem = { ...item };
         if (
@@ -169,17 +183,15 @@ const PagamentoScreen = ({ route }) => {
         }
         return newItem;
       });
-      // --- FIM DA LIMPEZA ---
 
       const callCriarPixHortifruti = httpsCallable(
         functions,
         "criarPixHortifruti"
       );
 
-      // --- payloadParaCloudFunction construído com o cleanedCarrinho ---
       const payloadParaCloudFunction = {
         idToken: idToken,
-        carrinho: cleanedCarrinho, // <--- USA O CARRINHO LIMPO AQUI
+        carrinho: cleanedCarrinho,
         frete: freteCalculado,
         taxaServico: taxaServico,
         total: parseFloat(totalFinal),
@@ -190,16 +202,14 @@ const PagamentoScreen = ({ route }) => {
             ? usuarioDataFromFirestore.nome
             : "Cliente"),
         external_reference: orderId,
+        cpfCliente: cpfCliente, // <-- CPF é enviado para a Cloud Function aqui
       };
       console.log(
         "Payload enviado para a Cloud Function:",
         payloadParaCloudFunction
       );
-      // -----------------------------------------------------------
 
-      // --- AQUI É ONDE USAMOS O PAYLOAD CORRETO ---
       const result = await callCriarPixHortifruti(payloadParaCloudFunction);
-      // --- FIM DA CORREÇÃO ---
 
       const { qrCode, paymentId } = result.data;
 
@@ -226,11 +236,11 @@ const PagamentoScreen = ({ route }) => {
             text: "OK",
             onPress: () => {
               Alert.alert("Pedido realizado com sucesso!");
-              navigation.navigate("PagamentoProcessado", {
-                orderId: orderId,
-                paymentId: paymentId,
-                status: "pending_payment",
-              });
+              console.log(
+                "DEBUG: Navegando para PagamentoProcessado com pedidoId:",
+                orderId
+              );
+              navigation.navigate("PagamentoProcessado", { pedidoId: orderId });
             },
           },
         ]
@@ -266,7 +276,7 @@ const PagamentoScreen = ({ route }) => {
   };
 
   return (
-    <SafeAreaView>
+    <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity

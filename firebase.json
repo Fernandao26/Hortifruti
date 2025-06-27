@@ -5,17 +5,26 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
-  "functions": [
-    {
-      "source": "functions",
-      "codebase": "default",
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.local"
-      ]
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20", 
+    "regions": ["us-central1"],
+    "environmentVariables": {
+      "MERCADOPAGO_ACCESS_TOKEN": "APP_USR-4217040089890737-062221-89cbeded00fae7b71730277eb0c1c06d-189567260"
     }
-  ]
+  },
+  "hosting": { 
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
 }
