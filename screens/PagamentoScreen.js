@@ -1,3 +1,4 @@
+// screens/PagamentoScreen.js
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -6,15 +7,15 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Linking,
+  Modal,
+  Platform, 
   Clipboard,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 import { auth, db, functions } from "../firebaseConfig";
-
-import { doc, getDoc, collection, addDoc } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, updateDoc, serverTimestamp } from "firebase/firestore"; // Adicionado updateDoc
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -25,11 +26,13 @@ const PagamentoScreen = ({ route }) => {
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [idToken, setIdToken] = useState(null); 
-  const [metodoPagamento, setMetodoPagamento] = useState("Pix");
+  const [metodoPagamento, setMetodoPagamento] = useState("Pix"); 
   const [enderecoCompleto, setEnderecoCompleto] = useState("");
-  const [usuarioDataFromFirestore, setUsuarioDataFromFirestore] =
-    useState(null);
-  const [qrCodePix, setQrCodePix] = useState(null);
+  const [usuarioDataFromFirestore, setUsuarioDataFromFirestore] = useState(null);
+
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [pixCodeToDisplay, setPixCodeToDisplay] = useState('');
+  const [currentOrderId, setCurrentOrderId] = useState(null); // Usado para guardar o ID do pedido criado
 
   const calcularSubtotal = () =>
     carrinho.reduce((sum, item) => sum + item.preco * item.quantidade, 0);
@@ -54,20 +57,9 @@ const PagamentoScreen = ({ route }) => {
     const unsubscribeAuth = auth.onAuthStateChanged(async (user) => {
       setCurrentUser(user);
       if (user) {
-        console.log(
-          "PagamentoScreen: onAuthStateChanged - Usuário logado detectado:",
-          user.email,
-          "UID:",
-          user.uid
-        );
-
         try {
           const tokenResult = await user.getIdTokenResult(true);
           setIdToken(tokenResult.token);
-          console.log(
-            "PagamentoScreen: Token ID obtido:",
-            tokenResult.token.substring(0, 30) + "..."
-          );
         } catch (tokenError) {
           console.error(
             "PagamentoScreen: Erro ao obter token ID no onAuthStateChanged:",
@@ -80,7 +72,7 @@ const PagamentoScreen = ({ route }) => {
           const userDoc = await getDoc(doc(db, "users", user.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
-            setUsuarioDataFromFirestore(data); // <-- Aqui os dados do usuário, incluindo o CPF, são carregados
+            setUsuarioDataFromFirestore(data); 
             const fullAddress = `${data.endereco}, ${data.numero} - ${data.bairro}\n${data.cidade} - ${data.estado}, CEP ${data.cep}`;
             setEnderecoCompleto(fullAddress);
           } else {
@@ -108,12 +100,20 @@ const PagamentoScreen = ({ route }) => {
     return () => unsubscribeAuth();
   }, []);
 
+  const handleCopyPix = () => {
+    if (pixCodeToDisplay) {
+      Clipboard.setString(pixCodeToDisplay);
+      Alert.alert("Copiado!", "Código PIX copiado para a área de transferência.");
+    }
+  };
+
+  const handlePixOk = () => {
+    setShowPixModal(false); 
+    navigation.navigate("Pedidos"); 
+  };
+
   const finalizarPedido = async () => {
     console.log("PagamentoScreen: Finalizar Pedido clicado.");
-    console.log(
-      "PagamentoScreen: currentUser (estado local):",
-      currentUser ? currentUser.uid : "NÃO DEFINIDO/LOGADO"
-    );
 
     if (isProcessingOrder) {
       console.warn("Pedido já está sendo processado.");
@@ -130,8 +130,8 @@ const PagamentoScreen = ({ route }) => {
       return;
     }
 
-    const cpfClienteRaw = usuarioDataFromFirestore?.cpf; // <-- CPF pego do estado (que veio do Firestore)
-    const cpfCliente = cpfClienteRaw ? String(cpfClienteRaw).replace(/\D/g, '') : null; // <-- CPF é limpo aqui
+    const cpfClienteRaw = usuarioDataFromFirestore?.cpf; 
+    const cpfCliente = cpfClienteRaw ? String(cpfClienteRaw).replace(/\D/g, '') : null; 
 
     if (!cpfCliente || cpfCliente.length !== 11) {
         Alert.alert(
@@ -147,17 +147,18 @@ const PagamentoScreen = ({ route }) => {
     setIsProcessingOrder(true);
 
     try {
-      const pedidoRef = await addDoc(collection(db, "pedidos"), {
+      // PRIMEIRO: Crie o documento do pedido no Firestore com status 'pending'
+      const pedidoDocRef = await addDoc(collection(db, "pedidos"), {
         userId: currentUser.uid,
         fornecedores: fornecedoresUnicos,
-        carrinho: carrinho,
+        carrinho: carrinho, // Salva o carrinho original
         subtotal: parseFloat(calcularSubtotal().toFixed(2)),
         frete: freteCalculado,
         taxaServico: taxaServico, 
         total: parseFloat(totalFinal),
         formaPagamento: metodoPagamento,
-        status: "pending",
-        criadoEm: new Date(),
+        status: "pending", 
+        criadoEm: serverTimestamp(), 
         nomeCliente:
           currentUser.displayName ||
           (usuarioDataFromFirestore
@@ -165,29 +166,24 @@ const PagamentoScreen = ({ route }) => {
             : "Cliente"),
         emailCliente: currentUser.email,
         enderecoEntrega: enderecoCompleto,
-        cpfCliente: cpfCliente, // <-- CPF é enviado para a Cloud Function aqui
+        cpfCliente: cpfCliente, 
+        // Não salva qrCodePix e paymentId aqui ainda, eles virão da Cloud Function
       });
-      const orderId = pedidoRef.id;
+      const orderId = pedidoDocRef.id;
+      setCurrentOrderId(orderId); // Guarda o ID do pedido criado
 
       console.log("Pedido salvo no Firestore com ID:", orderId);
 
+      // SEGUNDO: Chame a Cloud Function com o ID do pedido recém-criado como external_reference
       const cleanedCarrinho = carrinho.map((item) => {
         const newItem = { ...item };
-        if (
-          newItem.timestamp instanceof Object &&
-          "seconds" in newItem.timestamp
-        ) {
+        if (newItem.timestamp instanceof Object && "seconds" in newItem.timestamp) {
           newItem.timestamp = newItem.timestamp.toDate().toISOString();
-        } else if (newItem.timestamp) {
-          delete newItem.timestamp;
         }
         return newItem;
       });
 
-      const callCriarPixHortifruti = httpsCallable(
-        functions,
-        "criarPixHortifruti"
-      );
+      const callCriarPixHortifruti = httpsCallable(functions, "criarPixHortifruti");
 
       const payloadParaCloudFunction = {
         idToken: idToken,
@@ -201,8 +197,8 @@ const PagamentoScreen = ({ route }) => {
           (usuarioDataFromFirestore
             ? usuarioDataFromFirestore.nome
             : "Cliente"),
-        external_reference: orderId,
-        cpfCliente: cpfCliente, // <-- CPF é enviado para a Cloud Function aqui
+        external_reference: orderId, // <-- AGORA USA O ID DO PEDIDO REAL!
+        cpfCliente: cpfCliente, 
       };
       console.log(
         "Payload enviado para a Cloud Function:",
@@ -216,7 +212,7 @@ const PagamentoScreen = ({ route }) => {
       if (!qrCode || !paymentId) {
         Alert.alert(
           "Erro",
-          "Não foi possível gerar o código PIX ou ID de pagamento."
+          "Não foi possível gerar o código PIX ou ID de pagamento. Tente novamente."
         );
         console.error("Resposta da Cloud Function incompleta:", result.data);
         return;
@@ -224,29 +220,16 @@ const PagamentoScreen = ({ route }) => {
 
       console.log("PIX gerado. QR Code:", qrCode, "Payment ID:", paymentId);
 
-      Alert.alert(
-        "PIX Gerado!",
-        `Escaneie o QR Code ou copie o código PIX:\n\n${qrCode}`,
-        [
-          {
-            text: "Copiar Código",
-            onPress: () => Clipboard.setString(qrCode),
-          },
-          {
-            text: "OK",
-            onPress: () => {
-              Alert.alert("Pedido realizado com sucesso!");
-              console.log(
-                "DEBUG: Navegando para PagamentoProcessado com pedidoId:",
-                orderId
-              );
-              navigation.navigate("PagamentoProcessado", { pedidoId: orderId });
-            },
-          },
-        ]
-      );
+      // TERCEIRO: Atualize o pedido no Firestore com o QR Code e Payment ID
+      await updateDoc(doc(db, "pedidos", orderId), {
+        qrCodePix: qrCode,
+        paymentIdMercadoPago: paymentId, // Opcional: salva o ID do pagamento do MP
+        status: "pending_payment", // Atualiza o status para indicar que o PIX foi gerado
+      });
 
-      setQrCodePix(qrCode);
+      setPixCodeToDisplay(qrCode); // Define o PIX para exibição no modal
+      setShowPixModal(true); // Mostra o modal do PIX
+
     } catch (error) {
       console.error("Erro ao finalizar pedido (frontend):", error);
       let errorMessage =
@@ -382,12 +365,52 @@ const PagamentoScreen = ({ route }) => {
             </Text>
           )}
         </TouchableOpacity>
+
+        {/* Custom PIX Modal */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={showPixModal}
+          onRequestClose={() => {
+            Alert.alert(
+              "Atenção",
+              "Por favor, copie o código PIX e finalize o pagamento ou clique em OK para continuar."
+            );
+          }}
+        >
+          <View style={localStyles.centeredView}>
+            <View style={localStyles.modalView}>
+              <Text style={localStyles.modalTitle}>Código PIX para Pagamento</Text>
+              <Text style={localStyles.pixCodeText}>{pixCodeToDisplay}</Text>
+
+              <View style={localStyles.modalButtonContainer}>
+                {/* Botão Copiar Código - NÃO FECHA O MODAL */}
+                <TouchableOpacity
+                  style={[localStyles.modalButton, localStyles.copyButton]}
+                  onPress={handleCopyPix}
+                >
+                  <Icon name="content-copy" size={20} color="#FFFFFF" />
+                  <Text style={localStyles.modalButtonText}>Copiar Código</Text>
+                </TouchableOpacity>
+
+                {/* Botão OK - FECHA O MODAL E NAVEGA PARA PEDIDOS */}
+                <TouchableOpacity
+                  style={[localStyles.modalButton, localStyles.okButton]}
+                  onPress={handlePixOk}
+                >
+                  <Text style={localStyles.modalButtonText}>OK</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
   );
 };
+
 const styles = StyleSheet.create({
-  container: { backgroundColor: "#fff", padding: 16 },
+  container: { backgroundColor: "#fff", padding: 16, flex: 1 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -474,6 +497,80 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: "#ddd",
     marginVertical: 12,
+  },
+});
+
+const localStyles = StyleSheet.create({
+  centeredView: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  modalView: {
+    margin: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 35,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: '90%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+  },
+  pixCodeText: {
+    fontSize: 18,
+    marginBottom: 25,
+    textAlign: 'center',
+    color: '#555',
+    fontWeight: 'bold',
+    padding: 10,
+    backgroundColor: '#eee',
+    borderRadius: 5,
+    width: '100%',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo-Regular' : 'monospace',
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 15,
+  },
+  modalButton: {
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    elevation: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  copyButton: {
+    backgroundColor: '#007AFF',
+  },
+  okButton: {
+    backgroundColor: '#69A461',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginLeft: 5,
+    fontSize: 16,
   },
 });
 

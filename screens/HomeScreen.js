@@ -278,12 +278,21 @@ const carregarCarrinho = async () => {
             });
           }}
         >
-          <View style={styles.header}>
+           <View style={styles.header}>
+          <Image
+            source={require("../img/logo.png")} // seu logo
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <View style={styles.iconRow}>
+            <TouchableOpacity onPress={() => navigation.navigate("Pedidos")}>
             <Image
-              source={require("../img/logo.png")} // substitua pelo seu logo
-              style={styles.logo}
-              resizeMode="contain"
-            />
+                  source={require("../img/pedido.png")} // Caminho para sua imagem local
+                  style={{ width: 28, height: 28 }}
+                  resizeMode="contain"
+                />
+            </TouchableOpacity>
+            </View>
             <View style={styles.iconRow}>
               <TouchableOpacity onPress={() => navigation.navigate("Perfil")}>
                 <Image
