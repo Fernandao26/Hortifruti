@@ -11,11 +11,13 @@ import {
   Platform,
   Clipboard,
   ScrollView,
+  Image,
+  Dimensions,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-
+import { LinearGradient } from "expo-linear-gradient";
 import { auth, db, functions } from "../firebaseConfig";
 import {
   doc,
@@ -25,10 +27,14 @@ import {
   updateDoc,
   serverTimestamp,
   runTransaction,
-  FieldValue,
 } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { SafeAreaView } from "react-native-safe-area-context";
+import LottieView from "lottie-react-native";
+import { wp, hp } from "../src/utils/responsive";
+import successAnimation from "../assets/Pagamento.json";
+
+const { width } = Dimensions.get("window");
 
 // Lista estática de feriados nacionais fixos no Brasil para 2025 (MM-DD)
 const NATIONAL_HOLIDAYS_2025 = [
@@ -45,8 +51,12 @@ const NATIONAL_HOLIDAYS_2025 = [
   "11-15", // Proclamação da República
   "12-25", // Natal
 ];
+// (Manter todas as constantes e funções do backend originais aqui...)
 
 const PagamentoScreen = ({ route }) => {
+  // (Manter todos os states e efeitos orig
+  // const PagamentoScreen = ({ route }) => {
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const { carrinho, frete, cep, onClearCart } = route.params || {};
   const navigation = useNavigation();
 
@@ -206,46 +216,28 @@ const PagamentoScreen = ({ route }) => {
 
   const handlePixOk = async () => {
     setShowPixModal(false);
+    setShowSuccessAnimation(true);
 
-    if (onClearCart && typeof onClearCart === "function") {
-      onClearCart();
-      console.log(
-        "Carrinho limpo através da função onClearCart (estado local)."
-      );
-    } else {
-      console.warn(
-        "onClearCart não foi fornecido ou não é uma função. O carrinho local pode não ser limpo."
-      );
-    }
+    // Mostra a animação por 2 segundos antes de prosseguir
+    setTimeout(() => {
+      setShowSuccessAnimation(false);
 
-    if (currentUser && currentUser.uid) {
-      try {
-        const userCartRef = doc(db, "carts", currentUser.uid);
-        await updateDoc(userCartRef, { items: [] });
-        console.log(
-          "Carrinho persistente do usuário (UID:",
-          currentUser.uid,
-          ") limpo no Firestore."
-        );
-      } catch (error) {
-        console.error(
-          "Erro ao limpar carrinho persistente no Firestore:",
-          error
-        );
-        Alert.alert(
-          "Erro",
-          "Não foi possível limpar seu carrinho online. Por favor, tente novamente mais tarde."
-        );
+      if (onClearCart && typeof onClearCart === "function") {
+        onClearCart();
       }
-    } else {
-      console.warn(
-        "Não foi possível limpar o carrinho persistente: Usuário não logado ou UID ausente."
-      );
-    }
 
-    navigation.navigate("Pedidos");
+      if (currentUser && currentUser.uid) {
+        try {
+          const userCartRef = doc(db, "carts", currentUser.uid);
+          updateDoc(userCartRef, { items: [] });
+        } catch (error) {
+          console.error("Erro ao limpar carrinho:", error);
+        }
+      }
+
+      navigation.navigate("Pedidos");
+    }, 4000);
   };
-
   const onChangeDate = (event, selectedDate) => {
     const currentDate = selectedDate || dataEntrega;
     setShowDatePicker(Platform.OS === "ios");
@@ -509,155 +501,201 @@ const PagamentoScreen = ({ route }) => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <View style={styles.container}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
+      <LinearGradient
+        colors={["#4CAF50", "#8BC34A"]}
+        style={styles.headerGradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+      >
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            <Text style={styles.backButtonText}>←</Text>
+            <Icon name="arrow-left" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.title}>Pagamento</Text>
-          <Text style={styles.clearButton}>Frutiway</Text>
+          <Text style={styles.title}>Finalizar Pedido</Text>
+          <View style={{ width: 24 }} />
+        </View>
+      </LinearGradient>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Seção de Endereço */}
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <Icon name="map-marker" size={20} color="#4CAF50" />
+            <Text style={styles.sectionTitle}>Endereço de Entrega</Text>
+          </View>
+          <Text style={styles.addressText}>{enderecoCompleto}</Text>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => navigation.navigate("Perfil")}
+          >
+            <Text style={styles.editButtonText}>Alterar endereço</Text>
+          </TouchableOpacity>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <Text style={styles.summaryValue}>
-            {enderecoCompleto?.toString().trim()}
-          </Text>
-
-          <View style={styles.fornecedorSection}>
-            <Text style={styles.fornecedorName}>
-              {fornecedoresUnicos.length > 1 ? "Fornecedores:" : "Fornecedor:"}{" "}
-              {fornecedoresUnicos.join(", ")}
-            </Text>
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Text style={styles.addItemsLink}>Adicionar mais itens</Text>
-            </TouchableOpacity>
+        {/* Seção de Produtos */}
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <Icon name="basket" size={20} color="#4CAF50" />
+            <Text style={styles.sectionTitle}>Seu Pedido</Text>
           </View>
 
-          <View style={styles.produtosSection}>
-            <Text style={styles.produtosTitle}>Produtos</Text>
-            {carrinho && carrinho.length > 0 ? (
-              carrinho.map((item) => (
-                <View
-                  key={item.id?.toString().trim() || Math.random().toString()}
-                  style={styles.produtoRow}
-                >
-                  <Text style={styles.produtoNome}>
-                    {item.nome?.toString().trim()}
-                  </Text>
-                  <View style={styles.produtoInfo}>
-                    <Text style={styles.produtoQuantidade}>
-                      Qtd: {item.quantidade?.toString().trim()}
-                    </Text>
-                    <Text style={styles.produtoPreco}>
-                      R${" "}
-                      {((item.preco || 0) * (item.quantidade || 0)).toFixed(2)}
-                    </Text>
-                  </View>
-                </View>
-              ))
-            ) : (
-              <Text style={{ color: "#999" }}>Nenhum produto no carrinho.</Text>
-            )}
-            <View style={styles.divider} />
+          {carrinho.map((item) => (
+            <View key={item.id} style={styles.productItem}>
+              <View style={styles.productInfo}>
+                <Text style={styles.productName}>{item.nome}</Text>
+                <Text style={styles.productQuantity}>x {item.quantidade}</Text>
+              </View>
+              <Text style={styles.productPrice}>
+                R$ {((item.preco || 0) * (item.quantidade || 0)).toFixed(2)}
+              </Text>
+            </View>
+          ))}
+
+          <TouchableOpacity
+            style={styles.addMoreButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="plus-circle" size={20} color="#4CAF50" />
+            <Text style={styles.addMoreText}>Adicionar mais itens</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Seção de Entrega */}
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <Icon name="truck-delivery" size={20} color="#4CAF50" />
+            <Text style={styles.sectionTitle}>Entrega</Text>
           </View>
 
-          {/* Seleção de Data de Entrega */}
-          <View style={styles.deliveryDateSection}>
-            <Text style={styles.deliveryTimeTitle}>Data para Entrega</Text>
-            <TouchableOpacity
-              onPress={showDatepicker}
-              style={styles.datePickerButton}
-            >
-              <Text style={styles.datePickerButtonText}>
+          {/* Data de Entrega */}
+          <TouchableOpacity
+            onPress={showDatepicker}
+            style={styles.pickerButton}
+          >
+            <View style={styles.pickerIcon}>
+              <Icon name="calendar" size={20} color="#4CAF50" />
+            </View>
+            <View style={styles.pickerTextContainer}>
+              <Text style={styles.pickerLabel}>Data de entrega</Text>
+              <Text style={styles.pickerValue}>
                 {dataEntrega.toLocaleDateString("pt-BR")}
               </Text>
-              <Icon name="calendar" size={24} color="#69A461" />
-            </TouchableOpacity>
-            {showDatePicker && (
-              <DateTimePicker
-                testID="dateTimePicker"
-                value={dataEntrega}
-                mode="date"
-                display="default"
-                onChange={onChangeDate}
-                minimumDate={new Date()}
-              />
-            )}
-          </View>
+            </View>
+            <Icon name="chevron-right" size={20} color="#999" />
+          </TouchableOpacity>
 
-          {/* Seleção de Horário de Entrega (Customizada com Modal) */}
-          <View style={styles.deliveryTimeSection}>
-            <Text style={styles.deliveryTimeTitle}>Horário para Entrega</Text>
-            <TouchableOpacity
-              onPress={() => setShowTimePickerModal(true)}
-              style={styles.datePickerButton}
-            >
-              <Text style={styles.datePickerButtonText}>
+          {showDatePicker && (
+            <DateTimePicker
+              testID="dateTimePicker"
+              value={dataEntrega}
+              mode="date"
+              display="default"
+              onChange={onChangeDate}
+              minimumDate={new Date()}
+            />
+          )}
+
+          {/* Horário de Entrega */}
+          <TouchableOpacity
+            onPress={() => setShowTimePickerModal(true)}
+            style={styles.pickerButton}
+          >
+            <View style={styles.pickerIcon}>
+              <Icon name="clock-outline" size={20} color="#4CAF50" />
+            </View>
+            <View style={styles.pickerTextContainer}>
+              <Text style={styles.pickerLabel}>Horário de entrega</Text>
+              <Text style={styles.pickerValue}>
                 {getAvailableTimeOptions.find(
                   (opt) => opt.value === horarioEntrega
-                )?.label || "Selecione o horário"}
+                )?.label || "Selecione"}
               </Text>
-              <Icon name="clock-outline" size={24} color="#69A461" />
+            </View>
+            <Icon name="chevron-right" size={20} color="#999" />
+          </TouchableOpacity>
+
+          <Text style={styles.deliveryInfoText}>
+            <Text style={{ fontWeight: "bold" }}>Horários de entrega:</Text>
+            {"\n"}• Segunda a Sexta: 7h às 21h
+            {"\n"}• Sábado: 7h às 19h
+            {"\n"}• Domingo e Feriados: 8h às 13h
+          </Text>
+        </View>
+
+        {/* Seção de Pagamento */}
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <Icon name="credit-card" size={20} color="#4CAF50" />
+            <Text style={styles.sectionTitle}>Pagamento</Text>
+          </View>
+
+          <View style={styles.paymentMethod}>
+            <View style={styles.paymentMethodIcon}>
+              <Icon name="qrcode" size={24} color="#0F9D58" />
+            </View>
+            <View style={styles.paymentMethodInfo}>
+              <Text style={styles.paymentMethodName}>PIX</Text>
+              <Text style={styles.paymentMethodDescription}>
+                Pagamento instantâneo
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => Alert.alert("Método de pagamento", "Em breve!")}
+            >
+              <Text style={styles.changePaymentText}>Alterar</Text>
             </TouchableOpacity>
-            <Text style={styles.deliveryInfo}>
-              As entregas ocorrem:
-              {"\n"}• Segunda a Sexta: 7h às 21h
-              {"\n"}• Sábado: 7h às 19h
-              {"\n"}• Domingo e Feriados: 8h às 13h
+          </View>
+        </View>
+
+        {/* Resumo do Pedido */}
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <Icon name="receipt" size={20} color="#4CAF50" />
+            <Text style={styles.sectionTitle}>Resumo do Pedido</Text>
+          </View>
+
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Subtotal</Text>
+            <Text style={styles.summaryValue}>
+              R$ {calcularSubtotal().toFixed(2)}
             </Text>
           </View>
 
-          <View style={styles.paymentSection}>
-            <Text style={styles.paymentTitle}>Pagamento pelo app</Text>
-            <View style={styles.paymentMethod}>
-              <Icon
-                name="qrcode"
-                size={22}
-                color="#0F9D58"
-                style={{ marginRight: 6 }}
-              />
-              <Text style={styles.paymentMethodName}>
-                {metodoPagamento?.toString().trim()}
-              </Text>
-              <TouchableOpacity
-                onPress={() => Alert.alert("Método de pagamento", "Em breve!")}
-              >
-                <Text style={styles.changePaymentMethod}>Trocar</Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Taxa de entrega</Text>
+            <Text style={styles.summaryValue}>
+              R$ {freteCalculado.toFixed(2)}
+            </Text>
           </View>
 
-          <View style={styles.summarySection}>
-            <Text style={styles.summaryTitle}>Resumo de valores</Text>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Subtotal</Text>
-              <Text style={styles.summaryValue}>
-                R$ {calcularSubtotal().toFixed(2)}
-              </Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Taxa de entrega</Text>
-              <Text style={styles.summaryValue}>
-                R$ {freteCalculado.toFixed(2)}
-              </Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Taxa de serviço</Text>
-              <Text style={styles.summaryValue}>
-                R$ {taxaServico.toFixed(2)}
-              </Text>
-            </View>
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total</Text>
-              <Text style={styles.summaryValueTotal}>R$ {totalFinal}</Text>
-            </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Taxa de serviço</Text>
+            <Text style={styles.summaryValue}>R$ {taxaServico.toFixed(2)}</Text>
           </View>
-        </ScrollView>
 
+          <View style={styles.divider} />
+
+          <View style={[styles.summaryRow, { marginTop: 8 }]}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalValue}>R$ {totalFinal}</Text>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Botão de Finalizar */}
+      <LinearGradient
+        colors={["#4CAF50", "#8BC34A"]}
+        style={styles.footer}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+      >
         <TouchableOpacity
           style={styles.confirmButton}
           onPress={finalizarPedido}
@@ -666,337 +704,501 @@ const PagamentoScreen = ({ route }) => {
           {isProcessingOrder ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.confirmButtonText}>
-              Finalizar pedido • R$ {totalFinal}
-            </Text>
+            <View style={styles.buttonContent}>
+              <Text style={styles.confirmButtonText}>Finalizar Pedido</Text>
+              <Text style={styles.confirmButtonPrice}>R$ {totalFinal}</Text>
+            </View>
           )}
         </TouchableOpacity>
+      </LinearGradient>
 
-        {/* Custom PIX Modal */}
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={showPixModal}
-          onRequestClose={() => {
-            Alert.alert(
-              "Atenção",
-              "Por favor, copie o código PIX e finalize o pagamento ou clique em OK para continuar."
-            );
-          }}
-        >
-          <View style={localStyles.centeredView}>
-            <View style={localStyles.modalView}>
-              <Text style={localStyles.modalTitle}>
-                Código PIX para Pagamento
+      {/* Modal PIX */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showPixModal}
+        onRequestClose={() => {
+          Alert.alert(
+            "Atenção",
+            "Por favor, copie o código PIX e finalize o pagamento ou clique em OK para continuar."
+          );
+        }}
+      >
+        <View style={styles.centeredModal}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Pagamento via PIX</Text>
+              <Text style={styles.modalSubtitle}>
+                Copie o código abaixo e cole no seu app bancário
               </Text>
-              <Text style={localStyles.pixCodeText}>
-                {pixCodeToDisplay?.toString().trim()}
-              </Text>
-
-              <View style={localStyles.modalButtonContainer}>
-                <TouchableOpacity
-                  style={[localStyles.modalButton, localStyles.copyButton]}
-                  onPress={handleCopyPix}
-                >
-                  <Icon name="content-copy" size={20} color="#FFFFFF" />
-                  <Text style={localStyles.modalButtonText}>Copiar Código</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[localStyles.modalButton, localStyles.okButton]}
-                  onPress={handlePixOk}
-                >
-                  <Text style={localStyles.modalButtonText}>OK</Text>
-                </TouchableOpacity>
-              </View>
             </View>
-          </View>
-        </Modal>
 
-        {/* Modal de Seleção de Horário Personalizado */}
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={showTimePickerModal}
-          onRequestClose={() => setShowTimePickerModal(false)}
-        >
-          <View style={localStyles.centeredView}>
-            <View style={localStyles.modalView}>
-              <Text style={localStyles.modalTitle}>
-                Selecione o Horário de Entrega
-              </Text>
-              {getAvailableTimeOptions.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    localStyles.timeOptionButton,
-                    horarioEntrega === option.value &&
-                      localStyles.timeOptionButtonSelected,
-                  ]}
-                  onPress={() => {
-                    setHorarioEntrega(option.value);
-                    setShowTimePickerModal(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      localStyles.timeOptionButtonText,
-                      horarioEntrega === option.value &&
-                        localStyles.timeOptionButtonTextSelected,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            <View style={styles.pixCodeContainer}>
+              <Icon
+                name="qrcode"
+                size={80}
+                color="#0F9D58"
+                style={styles.qrIcon}
+              />
+              <Text style={styles.pixCodeText}>{pixCodeToDisplay}</Text>
+            </View>
+
+            <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={[
-                  localStyles.modalButton,
-                  { backgroundColor: "#FF3D59", marginTop: 20 },
-                ]}
-                onPress={() => setShowTimePickerModal(false)}
+                style={[styles.modalButton, styles.copyButton]}
+                onPress={handleCopyPix}
               >
-                <Text style={localStyles.modalButtonText}>Fechar</Text>
+                <Icon name="content-copy" size={20} color="#fff" />
+                <Text style={styles.modalButtonText}>Copiar Código</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.okButton]}
+                onPress={handlePixOk}
+              >
+                <Text style={styles.modalButtonText}>Já paguei</Text>
               </TouchableOpacity>
             </View>
           </View>
-        </Modal>
-      </View>
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showTimePickerModal}
+        onRequestClose={() => setShowTimePickerModal(false)}
+      >
+        <View style={styles.centeredModal}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Selecione o Horário</Text>
+
+            {getAvailableTimeOptions.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.timeOption,
+                  horarioEntrega === option.value && styles.timeOptionSelected,
+                ]}
+                onPress={() => {
+                  setHorarioEntrega(option.value);
+                  setShowTimePickerModal(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.timeOptionText,
+                    horarioEntrega === option.value &&
+                      styles.timeOptionTextSelected,
+                  ]}
+                >
+                  {option.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowTimePickerModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showSuccessAnimation}
+        onRequestClose={() => {}}
+      >
+        <View style={styles.animationContainer}>
+          <LottieView
+            source={successAnimation}
+            autoPlay
+            loop={false}
+            // NOVO: Adicionado a propriedade 'speed' para controlar a velocidade.
+            // 1 é a velocidade normal. 0.5 é metade da velocidade, 2 é o dobro.
+            speed={1.5} // Experimente valores como 0.5, 0.7, 0.8 para deixar mais lenta
+            // Ajuste aqui para preencher o container mantendo a proporção:
+            style={styles.lottieFullScreen}
+          />
+
+          <Text style={styles.successText}>Preparando Produtos...</Text>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { backgroundColor: "#fff", padding: 16, flex: 1 },
+  // Estilos globais
+  scrollContainer: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+
+  animationContainer: {
+    flex: 1, // Faz o container ocupar toda a altura e largura do Modal
+    justifyContent: "center", // Centraliza o conteúdo verticalmente
+    alignItems: "center", // Centraliza o conteúdo horizontalmente
+    backgroundColor: "rgba(255, 255, 255, 1)", // Fundo branco sólido
+  },
+  lottieFullScreen: {
+    // Como a animação é quadrada (600x600), podemos fazer ela ocupar 100% da largura
+    // e deixar a altura se ajustar proporcionalmente. O 'flex: 1' no container
+    // e centralização vão ajudar a posicioná-la.
+    width: "100%",
+    // Para manter a proporção e evitar o corte/estica, podemos usar aspectRatio: 1 (se a animação for quadrada)
+    // ou apenas flex: 1 se o LottieView se auto-ajustar bem dentro do container flex.
+    // Vamos tentar flex: 1 no LottieView, pois ele geralmente lida bem com isso.
+    flex: 1,
+    // Se flex: 1 não funcionar perfeitamente, tente:
+    // height: '100%', // Remova esta linha se usar aspect ratio ou flex: 1 para evitar esticar
+    // aspectRatio: 1, // Adicione esta linha se sua animação for quadrada (como 600x600) e você quer garantir que ela permaneça assim.
+  },
+  successText: {
+    marginTop: 5,
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#4CAF50",
+    position: "absolute", // Para posicionar o texto acima da animação
+    bottom: 80, // Ajuste a distância da parte inferior
+    zIndex: 1, // Garante que o texto esteja acima da animação
+    textAlign: "center", // Centraliza o texto se for longo
+    width: "100%", // Garante que o texto ocupe a largura completa para centralização
+  },
+
+  // Header
+  headerGradient: {
+    paddingTop: 16,
+    paddingBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    paddingHorizontal: 16,
   },
-  backButton: { paddingHorizontal: 8 },
-  backButtonText: { fontSize: 18, fontWeight: "bold" },
-  title: { fontSize: 18, fontWeight: "bold", textAlign: "center" },
-  clearButton: { fontSize: 16, color: "#666" },
-
-  fornecedorSection: { marginBottom: 16 },
-  fornecedorName: { fontSize: 16, fontWeight: "bold" },
-  addItemsLink: {
-    color: "#007AFF",
-    marginTop: 8,
-    textDecorationLine: "underline",
+  backButton: {
+    padding: 8,
   },
-
-  produtosSection: {
-    marginBottom: 16,
-  },
-  produtosTitle: {
-    fontSize: 16,
+  title: {
+    fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 8,
+    color: "#fff",
   },
-  produtoRow: {
-    marginBottom: 10,
+
+  // Cards
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  produtoNome: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  produtoInfo: {
+
+  // Seções
+  sectionHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 4,
+    marginBottom: 16,
   },
-  produtoQuantidade: {
-    fontSize: 14,
-    color: "#666",
-  },
-  produtoPreco: {
-    fontSize: 14,
-    fontWeight: "bold",
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginLeft: 8,
     color: "#333",
   },
-  divider: {
-    height: 1,
-    backgroundColor: "#ddd",
-    marginVertical: 12,
+
+  // Endereço
+  addressText: {
+    fontSize: 14,
+    color: "#555",
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  editButton: {
+    alignSelf: "flex-start",
+  },
+  editButtonText: {
+    color: "#4CAF50",
+    fontWeight: "500",
   },
 
-  deliveryDateSection: {
-    marginBottom: 20,
-    padding: 15,
-    backgroundColor: "#f9f9f9",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  datePickerButton: {
+  // Produtos
+  productItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 12,
-    paddingHorizontal: 15,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    backgroundColor: "#fff",
-    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
   },
-  datePickerButtonText: {
-    fontSize: 16,
+  productInfo: {
+    flex: 1,
+  },
+  productName: {
+    fontSize: 14,
     color: "#333",
+  },
+  productQuantity: {
+    fontSize: 12,
+    color: "#777",
+    marginTop: 4,
+  },
+  productPrice: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
+  addMoreButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+  },
+  addMoreText: {
+    color: "#4CAF50",
+    fontWeight: "500",
+    marginLeft: 8,
   },
 
-  deliveryTimeSection: {
-    marginBottom: 20,
-    padding: 15,
-    backgroundColor: "#f9f9f9",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
+  // Seletores
+  pickerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
   },
-  deliveryTimeTitle: {
+  pickerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(76, 175, 80, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  pickerTextContainer: {
+    flex: 1,
+  },
+  pickerLabel: {
+    fontSize: 12,
+    color: "#777",
+  },
+  pickerValue: {
     fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 10,
     color: "#333",
+    marginTop: 2,
   },
-  deliveryInfo: {
-    fontSize: 13,
-    color: "#555",
+  deliveryInfoText: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 12,
     lineHeight: 18,
-    marginTop: 5,
   },
 
-  paymentSection: { marginBottom: 16 },
-  paymentTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 8 },
+  // Pagamento
   paymentMethod: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    paddingVertical: 12,
   },
-  paymentMethodName: { fontSize: 16, flex: 1 },
-  changePaymentMethod: { fontSize: 16, color: "#007AFF" },
+  paymentMethodIcon: {
+    marginRight: 12,
+  },
+  paymentMethodInfo: {
+    flex: 1,
+  },
+  paymentMethodName: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#333",
+  },
+  paymentMethodDescription: {
+    fontSize: 12,
+    color: "#777",
+    marginTop: 2,
+  },
+  changePaymentText: {
+    color: "#4CAF50",
+    fontWeight: "500",
+  },
 
-  summarySection: { marginBottom: 16 },
-  summaryTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 8 },
+  // Resumo
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  summaryLabel: { fontSize: 14 },
-  summaryValue: { fontSize: 14 },
-  summaryValueTotal: { fontSize: 16, fontWeight: "bold" },
+  summaryLabel: {
+    fontSize: 14,
+    color: "#666",
+  },
+  summaryValue: {
+    fontSize: 14,
+    color: "#333",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#eee",
+    marginVertical: 8,
+  },
+  totalLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+  },
+  totalValue: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#4CAF50",
+  },
 
+  // Footer
+  footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    paddingBottom: 24,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
   confirmButton: {
-    backgroundColor: "#FF3D59",
     paddingVertical: 16,
     borderRadius: 8,
-    marginTop: 16,
+    alignItems: "center",
+  },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   confirmButtonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
-    textAlign: "center",
+    marginRight: 8,
   },
-});
+  confirmButtonPrice: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
 
-const localStyles = StyleSheet.create({
-  centeredView: {
+  // Modais
+  centeredModal: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.7)",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
-  modalView: {
-    margin: 20,
-    backgroundColor: "white",
-    borderRadius: 20,
-    padding: 35,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    width: "90%",
-    maxWidth: 400,
+  modalContainer: {
+    width: width - 40,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+  },
+  modalHeader: {
+    marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 15,
     color: "#333",
+    textAlign: "center",
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginTop: 8,
+  },
+  pixCodeContainer: {
+    backgroundColor: "#f9f9f9",
+    borderRadius: 12,
+    padding: 20,
+    alignItems: "center",
+    marginVertical: 16,
+  },
+  qrIcon: {
+    marginBottom: 16,
   },
   pixCodeText: {
-    fontSize: 18,
-    marginBottom: 25,
+    fontSize: 16,
+    fontFamily: Platform.OS === "ios" ? "Courier New" : "monospace",
+    color: "#333",
     textAlign: "center",
-    color: "#555",
-    fontWeight: "bold",
-    padding: 10,
-    backgroundColor: "#eee",
-    borderRadius: 5,
-    width: "100%",
-    fontFamily: Platform.OS === "ios" ? "Menlo-Regular" : "monospace",
+    marginTop: 8,
   },
-  modalButtonContainer: {
+  modalButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
-    width: "100%",
-    marginTop: 15,
+    marginTop: 16,
   },
   modalButton: {
-    borderRadius: 10,
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    elevation: 2,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
     flex: 1,
-    marginHorizontal: 5,
+    paddingVertical: 14,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
   },
   copyButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: "#2196F3",
+    marginRight: 8,
   },
   okButton: {
-    backgroundColor: "#69A461",
+    backgroundColor: "#4CAF50",
+    marginLeft: 8,
   },
   modalButtonText: {
-    color: "white",
-    fontWeight: "bold",
-    textAlign: "center",
-    marginLeft: 5,
-    fontSize: 16,
-  },
-  timeOptionButton: {
-    width: "100%",
-    padding: 15,
-    borderRadius: 10,
-    backgroundColor: "#f0f0f0",
-    marginBottom: 10,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  timeOptionButtonSelected: {
-    backgroundColor: "#69A461",
-    borderColor: "#4a7d4a",
-  },
-  timeOptionButtonText: {
-    fontSize: 18,
-    color: "#333",
-    fontWeight: "bold",
-  },
-  timeOptionButtonTextSelected: {
     color: "#fff",
+    fontWeight: "bold",
+    marginLeft: 8,
+  },
+  timeOption: {
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: "#f5f5f5",
+    marginBottom: 8,
+  },
+  timeOptionSelected: {
+    backgroundColor: "#4CAF50",
+  },
+  timeOptionText: {
+    fontSize: 16,
+    color: "#333",
+    textAlign: "center",
+  },
+  timeOptionTextSelected: {
+    color: "#fff",
+  },
+  cancelButton: {
+    marginTop: 16,
+    padding: 12,
+  },
+  cancelButtonText: {
+    color: "#F44336",
+    fontWeight: "500",
+    textAlign: "center",
   },
 });
 
