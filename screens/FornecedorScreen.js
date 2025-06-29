@@ -307,7 +307,7 @@ export default function FornecedorScreen() {
         }}
       >
         <Text style={styles.titulo}>Dashboard</Text>
-        {/* <BarChart
+        <BarChart
           data={{
             labels: ["À Venda", "Vendidos", "Total"],
             datasets: [
@@ -337,7 +337,7 @@ export default function FornecedorScreen() {
           backgroundColor="transparent"
           paddingLeft="15"
           style={{ marginVertical: hp("2%") }}
-        /> */}
+        />
         <Image
           source={require("../img/grafico1.png")}
           style={styles.imageDash}
@@ -403,7 +403,7 @@ export default function FornecedorScreen() {
             style={styles.addButton}
             onPress={() => setTelaAtual("cadastro")}
           >
-            <Text style={{ fontSize: hp("2.5%"), color: "gray" }}> + </Text>
+            <Text style={{ fontSize: hp("2.5%"), color: "#fff" }}> + </Text>
             <Text style={styles.addButtonText}> Adicionar produto</Text>
           </TouchableOpacity>
 
@@ -428,13 +428,13 @@ export default function FornecedorScreen() {
                 </View>
                 <View style={styles.productActions}>
                   <TouchableOpacity
-                    style={styles.actionButton}
+                    style={styles.actionButtonEdit}
                     onPress={() => editarProduto(item)}
                   >
                     <Text style={styles.actionText}>Editar</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={styles.actionButton}
+                    style={styles.actionButtonExcluir}
                     onPress={() => excluirProduto(item.id)}
                   >
                     <Text style={styles.actionText}>Excluir</Text>
@@ -479,95 +479,106 @@ export default function FornecedorScreen() {
             paddingTop: hp("2%"),
           }}
         >
-          <Text style={styles.titulo}>Cadastro de Produto</Text>
+          <View style={styles.cadastro}>
+            <Text style={styles.titulo}>Cadastrar Produtos</Text>
+            <Text style={styles.label}>Nome do Produto: </Text>
+            <TextInput
+              placeholder="Ex: Banana, Maçã"
+              placeholderTextColor="#9a9a9a"
+              value={nome}
+              onChangeText={setNome}
+              style={styles.input}
+            />
 
-          <TextInput
-            placeholder="Nome do Produto"
-            value={nome}
-            onChangeText={setNome}
-            style={styles.input}
-          />
+            <Text style={styles.label}>Categoria:</Text>
+            <View style={styles.filtroWrapper}>
+              {["Frutas", "Legumes", "Verduras"].map((cat) => {
+                const ativo = categoria === cat;
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.botaoFiltro, ativo && styles.botaoAtivo]}
+                    onPress={() => setCategoria(cat)}
+                  >
+                    <Text
+                      style={ativo ? styles.textoAtivo : styles.textoFiltro}
+                    >
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <Text style={styles.label}>Preço (R$) </Text>
+            <TextInput
+              value={precoFormatado}
+              onChangeText={(text) => {
+                const onlyNumbers = text.replace(/[^0-9]/g, "");
+                const float = parseFloat(onlyNumbers) / 100;
+                setPreco(float.toFixed(2));
+              }}
+              keyboardType="numeric"
+              placeholder="Preço (R$)"
+              placeholderTextColor="#9a9a9a"
+              style={styles.input}
+            />
+            <Text style={styles.label}>Estoque: </Text>
+            <TextInput
+              placeholder="Estoque"
+              placeholderTextColor="#9a9a9a"
+              value={estoque}
+              onChangeText={setEstoque}
+              keyboardType="numeric"
+              style={styles.input}
+            />
 
-          <Text style={styles.label}>Categoria:</Text>
-          <View style={styles.filtroWrapper}>
-            {["Frutas", "Legumes", "Verduras"].map((cat) => {
-              const ativo = categoria === cat;
-              return (
-                <TouchableOpacity
-                  key={cat}
-                  style={[styles.botaoFiltro, ativo && styles.botaoAtivo]}
-                  onPress={() => setCategoria(cat)}
-                >
-                  <Text style={ativo ? styles.textoAtivo : styles.textoFiltro}>
-                    {cat}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+            <Text style={styles.label}>Tipo de Preço:</Text>
+            <View style={styles.filtroWrapper}>
+              {["unid", "kg", "dúzia"].map((tipo) => {
+                const ativo = tipoPreco === tipo;
+                return (
+                  <TouchableOpacity
+                    key={tipo}
+                    style={[styles.botaoFiltro, ativo && styles.botaoAtivo]}
+                    onPress={() => setTipoPreco(tipo)}
+                  >
+                    <Text
+                      style={ativo ? styles.textoAtivo : styles.textoFiltro}
+                    >
+                      {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.label}>Tipo de Estoque:</Text>
+            <View style={styles.filtroWrapper}>
+              {["unid", "kg", "dúzia"].map((tipo) => {
+                const ativo = tipoEstoque === tipo;
+                return (
+                  <TouchableOpacity
+                    key={tipo}
+                    style={[styles.botaoFiltro, ativo && styles.botaoAtivo]}
+                    onPress={() => setTipoEstoque(tipo)}
+                  >
+                    <Text
+                      style={ativo ? styles.textoAtivo : styles.textoFiltro}
+                    >
+                      {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              onPress={modoEdicao ? salvarEdicaoProduto : cadastrarProduto}
+              style={styles.botaoSalvar}
+            >
+              <Text style={styles.textoBotao}>Salvar Produto</Text>
+            </TouchableOpacity>
           </View>
-
-          <TextInput
-            value={precoFormatado}
-            onChangeText={(text) => {
-              const onlyNumbers = text.replace(/[^0-9]/g, "");
-              const float = parseFloat(onlyNumbers) / 100;
-              setPreco(float.toFixed(2));
-            }}
-            keyboardType="numeric"
-            placeholder="Preço (R$)"
-            style={styles.input}
-          />
-
-          <TextInput
-            placeholder="Estoque"
-            value={estoque}
-            onChangeText={setEstoque}
-            keyboardType="numeric"
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>Tipo de Preço:</Text>
-          <View style={styles.filtroWrapper}>
-            {["unid", "kg", "dúzia"].map((tipo) => {
-              const ativo = tipoPreco === tipo;
-              return (
-                <TouchableOpacity
-                  key={tipo}
-                  style={[styles.botaoFiltro, ativo && styles.botaoAtivo]}
-                  onPress={() => setTipoPreco(tipo)}
-                >
-                  <Text style={ativo ? styles.textoAtivo : styles.textoFiltro}>
-                    {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <Text style={styles.label}>Tipo de Estoque:</Text>
-          <View style={styles.filtroWrapper}>
-            {["unid", "kg", "dúzia"].map((tipo) => {
-              const ativo = tipoEstoque === tipo;
-              return (
-                <TouchableOpacity
-                  key={tipo}
-                  style={[styles.botaoFiltro, ativo && styles.botaoAtivo]}
-                  onPress={() => setTipoEstoque(tipo)}
-                >
-                  <Text style={ativo ? styles.textoAtivo : styles.textoFiltro}>
-                    {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <TouchableOpacity
-            onPress={modoEdicao ? salvarEdicaoProduto : cadastrarProduto}
-            style={styles.botaoSalvar}
-          >
-            <Text style={styles.textoBotao}>Salvar Produto</Text>
-          </TouchableOpacity>
         </ScrollView>
       )}
 
@@ -582,17 +593,39 @@ export default function FornecedorScreen() {
           {/* Certifique-se de que esses caminhos de imagem estão corretos */}
           <Image
             source={require("../img/ativos.png")}
-            style={styles.menuIcon}
+            style={[
+              styles.menuIcon,
+              telaAtual === "ativos" && styles.menuIconActive,
+            ]}
           />
+          <Text
+            style={[
+              styles.menuItemText,
+              telaAtual === "ativos" && styles.menuTextActive,
+            ]}
+          >
+            Produtos
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setTelaAtual("vendidos")}
-          style={styles.menuItem}
+          style={[styles.menuItem]}
         >
           <Image
             source={require("../img/Vendas.png")}
-            style={styles.menuIcon}
+            style={[
+              styles.menuIcon,
+              telaAtual === "vendidos" && styles.menuIconActive,
+            ]}
           />
+          <Text
+            style={[
+              styles.menuItemText,
+              telaAtual === "vendidos" && styles.menuTextActive,
+            ]}
+          >
+            Vendas
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setTelaAtual("cadastro")}
@@ -600,8 +633,19 @@ export default function FornecedorScreen() {
         >
           <Image
             source={require("../img/cadastroo.png")}
-            style={styles.menuIcon}
+            style={[
+              styles.menuIcon,
+              telaAtual === "cadastro" && styles.menuIconActive,
+            ]}
           />
+          <Text
+            style={[
+              styles.menuItemText,
+              telaAtual === "cadastro" && styles.menuTextActive,
+            ]}
+          >
+            Cadastro
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setTelaAtual("dashboard")}
@@ -609,8 +653,19 @@ export default function FornecedorScreen() {
         >
           <Image
             source={require("../img/dashboard.png")}
-            style={styles.menuIcon}
+            style={[
+              styles.menuIcon,
+              telaAtual === "dashboard" && styles.menuIconActive,
+            ]}
           />
+          <Text
+            style={[
+              styles.menuItemText,
+              telaAtual === "dashboard" && styles.menuTextActive,
+            ]}
+          >
+            Dashboard
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => navigation.navigate("Perfil")}
@@ -618,8 +673,19 @@ export default function FornecedorScreen() {
         >
           <Image
             source={require("../img/perfill.png")}
-            style={styles.menuIcon}
+            style={[
+              styles.menuIcon,
+              telaAtual === "perfil" && styles.menuIconActive,
+            ]}
           />
+          <Text
+            style={[
+              styles.menuItemText,
+              telaAtual === "perfil" && styles.menuTextActive,
+            ]}
+          >
+            Perfil
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -632,6 +698,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff", // Cor de fundo geral do app
     paddingBottom: hp("10"),
     // paddingTop: insets.top será aplicado diretamente no componente
+  },
+  cadastro: {
+    paddingHorizontal: hp("2"),
   },
   titulo: {
     fontSize: hp("2.8%"),
@@ -654,8 +723,8 @@ const styles = StyleSheet.create({
   label: {
     fontWeight: "600",
     marginBottom: hp("0.8%"),
-    marginTop: hp("1.5%"),
-    fontSize: hp("1.8%"),
+    marginTop: hp("0.3%"),
+    fontSize: hp("1.9"),
     color: "#333",
   },
   filtroWrapper: {
@@ -667,18 +736,18 @@ const styles = StyleSheet.create({
     alignContent: "center",
   },
   botaoFiltro: {
-    paddingHorizontal: wp("5%"),
+    paddingHorizontal: wp("3%"),
     paddingVertical: hp("1%"),
     borderWidth: 1,
     borderColor: "#ccc",
-    borderRadius: 20,
+    borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#fff",
   },
   botaoAtivo: {
-    backgroundColor: "#4CAF50",
-    borderColor: "#4CAF50",
+    backgroundColor: "#69a461",
+    borderColor: "#69a461",
   },
   textoFiltro: {
     color: "#333",
@@ -690,7 +759,7 @@ const styles = StyleSheet.create({
     fontSize: hp("1.6%"),
   },
   botaoSalvar: {
-    backgroundColor: "#4CAF50",
+    backgroundColor: "#69a461",
     paddingVertical: hp("2%"),
     borderRadius: 8,
     alignItems: "center",
@@ -744,13 +813,14 @@ const styles = StyleSheet.create({
     marginTop: hp("1%"),
   },
   botaoEditar: {
-    backgroundColor: "#DBE8F2",
+    backgroundColor: "#69a461",
     paddingVertical: hp("0.8%"),
     paddingHorizontal: wp("3%"),
     borderRadius: 6,
     flex: 1,
     marginRight: wp("1%"),
     alignItems: "center",
+    borderWidth: 1,
   },
   botaoExcluir: {
     paddingVertical: hp("0.8%"),
@@ -779,7 +849,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   addButton: {
-    backgroundColor: "#DBE8F2",
+    backgroundColor: "#19b3e6",
     paddingHorizontal: wp("2%"),
     paddingVertical: hp("0.4%"),
     borderRadius: 10,
@@ -791,7 +861,7 @@ const styles = StyleSheet.create({
     marginBottom: hp("1%"),
   },
   addButtonText: {
-    color: "black",
+    color: "#fff",
     fontWeight: "bold",
     fontSize: hp("1.5%"),
     alignSelf: "center",
@@ -811,8 +881,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   filterActive: {
-    backgroundColor: "#4CAF50",
-    borderColor: "#4CAF50",
+    backgroundColor: "#69a461",
+    borderColor: "#69a461",
   },
   filterText: {
     color: "#333",
@@ -829,7 +899,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 10,
     marginBottom: hp("1.5%"),
-    padding: wp("4%"),
+    padding: wp("5%"),
     flexDirection: "row",
     alignItems: "center",
     elevation: 2,
@@ -840,8 +910,8 @@ const styles = StyleSheet.create({
   productImage: {
     width: wp("22%"),
     height: hp("10%"),
-    resizeMode: "contain",
-    borderRadius: 8,
+    resizeMode: "cover",
+    borderRadius: 10,
     marginRight: wp("4%"),
   },
   productDetails: {
@@ -868,8 +938,16 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     height: hp("10%"),
   },
-  actionButton: {
-    backgroundColor: "#DBE8F2",
+  actionButtonExcluir: {
+    backgroundColor: "#DC5831",
+    paddingVertical: hp("0.8%"),
+    paddingHorizontal: wp("3%"),
+    borderRadius: 6,
+    marginBottom: hp("0.5%"),
+    elevation: 1,
+  },
+  actionButtonEdit: {
+    backgroundColor: "#69a461",
     paddingVertical: hp("0.8%"),
     paddingHorizontal: wp("3%"),
     borderRadius: 6,
@@ -877,10 +955,11 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   actionText: {
-    color: "#333",
+    color: "#fff",
     fontWeight: "bold",
     fontSize: hp("1.4%"),
   },
+
   emptyText: {
     textAlign: "center",
     color: "#999",
@@ -919,17 +998,24 @@ const styles = StyleSheet.create({
   menuItem: {
     flex: 1,
     alignItems: "center",
-    paddingVertical: hp("0.5%"),
   },
-  menuIcon: {
-    width: wp("6%"),
-    height: wp("9%"),
 
-    tintColor: "#4CAF50",
+  menuIcon: {
+    width: wp("17%"),
+    height: wp("6%"),
+
+    alignSelf: "center",
   },
   menuItemText: {
-    fontSize: hp("1.4%"),
-    color: "#333",
+    fontSize: hp("1.5%"),
+    color: "#69a461",
     textAlign: "center",
+  },
+  menuIconActive: {
+    tintColor: "#000000", // Preto para o ícone ativo
+  },
+  menuTextActive: {
+    color: "#000000", // Preto para o texto ativo
+    // Opcional: deixar em negrito
   },
 });

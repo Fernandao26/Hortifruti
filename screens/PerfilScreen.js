@@ -25,7 +25,7 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
 } from "firebase/auth";
-import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from "expo-image-picker";
 import * as MediaLibrary from "expo-media-library";
 import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
@@ -56,31 +56,31 @@ export default function PerfilScreen() {
   const [fotoLocal, setFotoLocal] = useState(null);
   const [fotoAlterada, setFotoAlterada] = useState(false);
 
-
   const navigation = useNavigation();
   const _goBack = () => {
     navigation.goBack();
   };
   const escolherImagem = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permissionResult.granted) {
       alert("Permissão para acessar a galeria é necessária!");
       return;
     }
-  
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
     });
-  
+
     if (!result.canceled) {
       const uri = result.assets[0].uri;
-  
+
       // Converter URI para Base64
       const base64 = await convertUriToBase64(uri);
-  
+
       // Salvar no Firestore
       await salvarFotoNoFirestore(base64);
     }
@@ -99,12 +99,12 @@ export default function PerfilScreen() {
     try {
       const user = auth.currentUser;
       if (!user) throw new Error("Usuário não autenticado");
-  
+
       const userDocRef = doc(db, "users", user.uid);
       await updateDoc(userDocRef, {
         fotoBase64: base64Image, // Salva como string no Firestore
       });
-  
+
       console.log("Foto salva no Firestore");
       setFotoLocal(base64Image); // Atualiza estado local
     } catch (error) {
@@ -115,14 +115,14 @@ export default function PerfilScreen() {
   const salvarFotoPerfil = async () => {
     try {
       if (!usuario?.uid || !fotoLocal) return;
-  
+
       // 1. Salva localmente
       await AsyncStorage.setItem("fotoLocal", fotoLocal);
-  
+
       // 2. Atualiza no Firestore
       const userRef = doc(db, "usuarios", usuario.uid);
       await updateDoc(userRef, { fotoLocal });
-  
+
       Alert.alert("Sucesso", "Foto atualizada com sucesso!");
       setFotoAlterada(false);
     } catch (error) {
@@ -232,7 +232,7 @@ export default function PerfilScreen() {
         estado,
         tipo,
         empresa,
-        fotoLocal: fotoLocal || ""
+        fotoLocal: fotoLocal || "",
       });
 
       setEditando(false);
@@ -292,7 +292,6 @@ export default function PerfilScreen() {
   }
 
   if (!usuario) return <Text>Usuário não encontrado</Text>;
-  
 
   return (
     <KeyboardAvoidingView
@@ -409,10 +408,14 @@ export default function PerfilScreen() {
                         ? { uri: fotoLocal }
                         : require("../img/frutigoprofile.png")
                     }
-                    style={{ width: 170, height: 170, borderRadius: 85 , size: 160 }}
+                    style={{
+                      width: 170,
+                      height: 170,
+                      borderRadius: 85,
+                      size: 160,
+                    }}
                   />
                 </TouchableOpacity>
-
 
                 <TouchableOpacity
                   style={{
@@ -619,10 +622,6 @@ export default function PerfilScreen() {
             >
               <Text style={styles.botaoTexto}>Desativar Conta</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity style={[styles.botao]} onPress={handleLogout}>
-              <Text style={styles.botaoTexto}>Sair da conta</Text>
-            </TouchableOpacity>
           </View>
 
           <Modal visible={modalVisible} transparent animationType="slide">
@@ -658,7 +657,6 @@ export default function PerfilScreen() {
     </KeyboardAvoidingView>
   );
 }
-
 
 const styles = StyleSheet.create({
   container: {
