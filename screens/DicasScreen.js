@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Image, Alert } from 'react-native';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebaseConfig'; // Garanta que 'db' está sendo importado de firebaseConfig
+import { db } from '../firebaseConfig'; 
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -13,45 +13,37 @@ const DicasScreen = () => {
   const navigation = useNavigation();
 
   useEffect(() => {
-    // Consulta para buscar dicas da coleção 'dicas' no Firestore
     const q = query(
       collection(db, 'dicas'),
-      orderBy('criadoEm', 'desc') // Ordena as dicas pela data de criação (mais novas primeiro)
+      orderBy('criadoEm', 'desc')
     );
 
-    // Configura um listener em tempo real para as dicas
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const dicasList = snapshot.docs.map(doc => {
         const data = doc.data();
         return {
-          id: doc.id, // Adiciona o ID do documento ao objeto da dica
+          id: doc.id, 
           ...data,
-          // Converte o Timestamp do Firestore para string ISO, se existir
           criadoEm: data.criadoEm?.toDate ? data.criadoEm.toDate().toISOString() : data.criadoEm,
         };
       });
-      setDicas(dicasList); // Atualiza o estado com a lista de dicas
-      setLoading(false); // Desativa o indicador de carregamento
+      setDicas(dicasList);
+      setLoading(false);
       console.log("DicasScreen: Dicas carregadas em tempo real.");
     }, (error) => {
-      // Em caso de erro ao carregar as dicas
       console.error("DicasScreen: Erro ao carregar dicas:", error);
-      setLoading(false); // Desativa o indicador de carregamento
+      setLoading(false);
       Alert.alert("Erro", "Não foi possível carregar as dicas.");
     });
 
-    // Função de limpeza: desinscreve o listener quando o componente é desmontado
     return () => unsubscribe(); 
-  }, []); // O array vazio garante que o useEffect rode apenas uma vez
+  }, []);
 
-  // Função para renderizar cada item da lista de dicas
   const renderDicaItem = ({ item }) => (
     <TouchableOpacity
       style={styles.card}
-      // Ao clicar, navega para a tela de Detalhes da Dica, passando o ID
       onPress={() => navigation.navigate('DetalhesDica', { dicaId: item.id })}
     >
-      {/* Exibe a imagem da dica ou um placeholder se não houver imagem */}
       {item.imageUrl ? (
         <Image source={{ uri: item.imageUrl }} style={styles.dicaImage} />
       ) : (
@@ -61,14 +53,12 @@ const DicasScreen = () => {
       )}
       <View style={styles.cardContent}>
         <Text style={styles.dicaTitle}>{item.titulo}</Text>
-        {/* Exibe a descrição se ela existir */}
         {item.descricao && <Text style={styles.dicaDescription}>{item.descricao}</Text>}
         <Text style={styles.viewDetailsLink}>{'Ver Dica Completa →'}</Text>
       </View>
     </TouchableOpacity>
   );
 
-  // Exibe um indicador de carregamento enquanto as dicas estão sendo carregadas
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -80,21 +70,20 @@ const DicasScreen = () => {
 
   return (
     <SafeAreaView style={styles.fullScreen}>
-      {/* Cabeçalho da tela */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{'Dicas Saudáveis'}</Text>
-        <Text style={{ width: 40 }}></Text> {/* Espaçador para centralizar o título */}
+        <Text style={{ width: 40 }}></Text>
       </View>
 
-      {/* Exibe mensagem de "sem dicas" ou a lista de dicas */}
       {dicas.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Icon name="lightbulb-on-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyText}>{'Nenhuma dica encontrada no momento.'}</Text>
-          <Text style={styles.emptySubText}>{'Adicione algumas dicas no Firestore!'}</Text>
+          {/* Apenas uma pequena alteração para forçar reprocessamento */}
+          <Text style={styles.emptyText}>{'Nenhuma dica disponível no momento. Tente novamente mais tarde.'}</Text> 
+          <Text style={styles.emptySubText}>{'Adicione novas dicas no Firestore para vê-las aqui!'}</Text>
         </View>
       ) : (
         <FlatList
@@ -176,7 +165,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 16,
     marginBottom: 16,
-    flexDirection: 'row', // Organiza imagem e conteúdo lado a lado
+    flexDirection: 'row',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -188,7 +177,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 8,
     marginRight: 15,
-    backgroundColor: '#eee', // Fundo para placeholder enquanto carrega
+    backgroundColor: '#eee',
   },
   placeholderImage: {
     width: 100,
@@ -205,7 +194,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   cardContent: {
-    flex: 1, // Permite que o conteúdo ocupe o espaço restante
+    flex: 1,
   },
   dicaTitle: {
     fontSize: 18,

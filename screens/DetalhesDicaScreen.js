@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Image, TouchableOpacity, Alert } from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig'; // Garanta que 'db' está sendo importado de firebaseConfig
+import { db } from '../firebaseConfig'; 
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -10,7 +10,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 export default function DetalhesDicaScreen() {
   const route = useRoute();
   const navigation = useNavigation();
-  const { dicaId } = route.params; // Pega o ID da dica passado pela rota
+  const { dicaId } = route.params;
 
   const [dica, setDica] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,8 +23,8 @@ export default function DetalhesDicaScreen() {
         return;
       }
       try {
-        const docRef = doc(db, "dicas", dicaId); // Referência ao documento da dica
-        const docSnap = await getDoc(docRef); // Busca o documento
+        const docRef = doc(db, "dicas", dicaId);
+        const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -46,9 +46,8 @@ export default function DetalhesDicaScreen() {
     };
 
     fetchDicaDetails();
-  }, [dicaId]); // Executa quando o ID da dica muda
+  }, [dicaId]);
 
-  // Exibe um indicador de carregamento
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -58,7 +57,6 @@ export default function DetalhesDicaScreen() {
     );
   }
 
-  // Exibe mensagem se a dica não for encontrada
   if (!dica) {
     return (
       <View style={styles.emptyContainer}>
@@ -72,18 +70,16 @@ export default function DetalhesDicaScreen() {
 
   return (
     <SafeAreaView style={styles.fullScreen}>
-      {/* Cabeçalho da tela */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{'Detalhes da Dica'}</Text>
-        <Text style={{ width: 40 }}></Text> {/* Espaçador */}
+        <Text style={{ width: 40 }}></Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.contentContainer}>
         <Text style={styles.dicaTitle}>{dica.titulo}</Text>
-        {/* Exibe a imagem da dica ou um placeholder */}
         {dica.imageUrl ? (
           <Image source={{ uri: dica.imageUrl }} style={styles.dicaImage} />
         ) : (
@@ -91,10 +87,18 @@ export default function DetalhesDicaScreen() {
             <Text style={styles.placeholderText}>{'Sem Imagem'}</Text>
           </View>
         )}
-        {/* Exibe a descrição completa */}
+        
+        {/* CORREÇÃO APLICADA AQUI: Renderização da descrição completa, lidando com quebras de linha */}
         {dica.descricaoCompleta && (
-          <Text style={styles.descriptionText}>{dica.descricaoCompleta}</Text>
+          <View style={styles.descriptionContainer}>
+            {dica.descricaoCompleta.split('\n').map((paragraph, index) => (
+              <Text key={index} style={styles.descriptionText}>
+                {paragraph}
+              </Text>
+            ))}
+          </View>
         )}
+
         {/* Se houver uma lista de pontos/tópicos, exibe-os */}
         {dica.pontosChave && dica.pontosChave.length > 0 && (
           <View>
@@ -178,7 +182,7 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 10,
     marginBottom: 15,
-    backgroundColor: '#eee', // Fundo de placeholder
+    backgroundColor: '#eee',
   },
   placeholderImage: {
     width: '100%',
@@ -194,10 +198,13 @@ const styles = StyleSheet.create({
     color: '#888',
     textAlign: 'center',
   },
+  descriptionContainer: { // Novo estilo para o container da descrição
+    marginBottom: 20,
+  },
   descriptionText: {
     fontSize: 16,
     color: '#555',
-    marginBottom: 20,
+    marginBottom: 10, // Espaçamento entre os parágrafos
     textAlign: 'justify',
   },
   sectionTitle: {
