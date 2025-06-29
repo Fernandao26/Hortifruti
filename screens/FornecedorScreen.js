@@ -453,7 +453,7 @@ export default function FornecedorScreen() {
         </View>
       )}
 
-      {telaAtual === "vendidos" && (
+      {telaAtual === "vendas" && (
         <FlatList
           data={aplicarFiltrosEOrdenacao(produtosVendidos)}
           keyExtractor={(item) => item.id}
@@ -586,7 +586,7 @@ export default function FornecedorScreen() {
           />
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => setTelaAtual("vendidos")}
+          onPress={() => navigation.navigate("Vendas")}
           style={styles.menuItem}
         >
           <Image

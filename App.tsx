@@ -22,6 +22,8 @@ import AjudaScreen from "./screens/AjudaScreen";
 import AdminScreen from "./screens/AdminScreen";
 import DetalhesReceitaScreen from "./screens/DetalhesReceitaScreen.js";
 import DetalhesDicaScreen from "./screens/DetalhesDicaScreen";
+import VendasScreen from "./screens/VendasScreen";
+import DetalhesPedidoScreen from "./screens/DetalhesPedidoScreen.js"
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -64,9 +66,11 @@ export default function App() {
             <Stack.Screen name="Dicas" component={DicasScreen} options={{ headerShown: false }} />
             <Stack.Screen name="DetalhesDica" component={DetalhesDicaScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Receitas" component={ReceitasScreen} options={{ headerShown: false }} />
-            <Stack.Screen name="Pedidos" component={PedidosScreen} />
+            <Stack.Screen name="Pedidos" component={PedidosScreen} options={{ headerShown: false }}  />
+            <Stack.Screen name="DetalhesPedido" component={DetalhesPedidoScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Avaliacao" component={AvaliacaoScreen} />
             <Stack.Screen name="Perfil" component={PerfilScreen} />
+            <Stack.Screen name="Vendas" component={VendasScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Ajuda" component={AjudaScreen} />
             <Stack.Screen name="Admin" component={AdminScreen} />
             <Stack.Screen name="DetalhesReceita" component={DetalhesReceitaScreen} options={{ headerShown: false }} />

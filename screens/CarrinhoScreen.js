@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
-  Text,
+  Text, 
   StyleSheet,
   FlatList,
   Image,
@@ -22,21 +22,23 @@ import {
   updateDoc,
   addDoc,
   collection,
-  getDocs,
   query,
   where,
+  getDocs,
   deleteDoc,
+  // setDoc, // setDoc não será usado para documentos de item individuais aqui
 } from "firebase/firestore";
 import { hp, wp } from "../src/utils/responsive";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { SafeAreaView } from "react-native-safe-area-context";
+
 export default function CarrinhoScreen() {
   const route = useRoute();
   const navigation = useNavigation();
 
-  const { carrinho: carrinhoInicial = [], atualizarCarrinhoNaHome } =
-    route.params || {};
-  const [carrinho, setCarrinho] = useState([]);
+  // Recebe onHomeRefresh dos parâmetros da rota (vindo da HomeScreen)
+  const { atualizarCarrinhoNaHome, onHomeRefresh } = route.params || {}; 
+  const [carrinho, setCarrinho] = useState([]); // Agora será um array de objetos de item
   const [enderecoUser, setEnderecoUser] = useState("");
   const [numeroUser, setNumeroUser] = useState("");
   const [bairroUser, setBairroUser] = useState("");
@@ -47,23 +49,28 @@ export default function CarrinhoScreen() {
   const [cep, setCep] = useState("");
   const [cidadeInput, setCidadeInput] = useState("");
   const [estadoInput, setEstadoInput] = useState("");
-  const [freteCalculado, setFreteCalculado] = useState(null); // Frete fixo R$ 7,00;
+  const [freteCalculado, setFreteCalculado] = useState(null); 
   const [enderecosSalvos, setEnderecosSalvos] = useState([]);
 
-  const CEP_LOJA = "12507050";
+  // Removido: userCartDocId não é mais necessário, pois cada item é um documento
+
+  const CEP_LOJA = "12507050"; 
+  
   useEffect(() => {
     if (cep && cep.length === 8) {
       buscarEnderecoPorCEP(cep);
     }
   }, [cep]);
-  // Função para agrupar os produtos por fornecedor
+
   const agruparPorFornecedor = (itens) => {
     if (!Array.isArray(itens)) return {};
 
     return itens.reduce((acc, item) => {
-      const fornecedor = item.fornecedor || "Desconhecido";
-      if (!acc[fornecedor]) acc[fornecedor] = [];
-      acc[fornecedor].push(item);
+      // Usar nomeFornecedor se disponível, caso contrário 'fornecedor' (UID)
+      // Ajuste para garantir que 'fornecedor' ou 'nomeFornecedor' sejam strings
+      const fornecedorDisplay = (item.nomeFornecedor || item.fornecedor || "Desconhecido")?.toString().trim();
+      if (!acc[fornecedorDisplay]) acc[fornecedorDisplay] = [];
+      acc[fornecedorDisplay].push(item);
       return acc;
     }, {});
   };
@@ -72,40 +79,67 @@ export default function CarrinhoScreen() {
     return agruparPorFornecedor(carrinho);
   }, [carrinho]);
 
-  // Carregar carrinho do Firebase
+  // Carregar carrinho do Firebase - agora busca múltiplos documentos de item
   const carregarCarrinho = async () => {
     try {
       const uid = auth.currentUser?.uid;
-      if (!uid) return;
+      if (!uid) {
+        setCarrinho([]); 
+        return;
+      }
 
+      // Query para buscar TODOS os documentos na coleção 'carrinho' que pertencem a este UID
       const q = query(collection(db, "carrinho"), where("uid", "==", uid));
       const snapshot = await getDocs(q);
 
-      const lista = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setCarrinho(lista);
+      if (!snapshot.empty) { 
+        // Cada documento no snapshot é um item de carrinho
+        const itemsList = snapshot.docs.map(doc => ({
+          id: doc.id, // O ID do documento Firestore será o ID do item
+          ...doc.data(),
+          preco: Number(doc.data().preco) || 0, // Garante que preco é número
+          quantidade: Number(doc.data().quantidade) || 0 // Garante que quantidade é número
+        }));
+        
+        setCarrinho(itemsList); 
+        console.log(`Carrinho carregado do Firestore. Encontrados ${itemsList.length} itens.`);
+      } else {
+        setCarrinho([]);
+        console.log("Nenhum item encontrado no carrinho para o usuário. Carrinho local vazio.");
+      }
+
     } catch (error) {
       console.error("Erro ao carregar carrinho:", error);
+      Alert.alert("Erro", "Não foi possível carregar seu carrinho. Tente novamente.");
+      setCarrinho([]); 
     }
   };
-  // Função para atualizar quantidade no Firebase
+
+  // Função para atualizar quantidade no Firebase - agora atualiza o documento de item específico
   const atualizarQuantidadeNoFirebase = async (itemId, novaQuantidade) => {
     try {
-      const itemRef = doc(db, "carrinho", itemId);
-      await updateDoc(itemRef, {
-        quantidade: novaQuantidade,
-      });
+      const uid = auth.currentUser?.uid;
+      if (!uid) {
+        Alert.alert("Erro", "Usuário não logado para atualizar o item.");
+        return;
+      }
+
+      const itemRef = doc(db, "carrinho", itemId); // Referência direta ao documento do item
+      await updateDoc(itemRef, { quantidade: Number(novaQuantidade) }); // Atualiza a quantidade
+      console.log(`Quantidade do item ${itemId} atualizada para ${novaQuantidade} no Firestore.`);
+      
     } catch (error) {
-      console.error("Erro ao atualizar quantidade:", error);
+      console.error("Erro ao atualizar quantidade no Firebase:", error);
+      Alert.alert("Erro", "Não foi possível atualizar a quantidade do item.");
     }
   };
+
   useFocusEffect(
     useCallback(() => {
       carregarCarrinho();
     }, [])
   );
+
   const fetchEnderecoUsuario = async () => {
     try {
       const uid = auth.currentUser.uid;
@@ -118,20 +152,23 @@ export default function CarrinhoScreen() {
 
       const cepOriginal = data.cep || "";
 
-      setCep(cepOriginal); // ✅ Atualiza o estado `cep` com o original
+      setCep(cepOriginal); 
 
       if (cepOriginal.length === 8) {
-        await buscarEnderecoPorCEP(cepOriginal); // ✅ Recalcula o frete com o CEP original
+        await buscarEnderecoPorCEP(cepOriginal); 
       }
     } catch (err) {
       console.error("Erro ao carregar endereço:", err);
+      setEnderecoUser("Erro ao carregar endereço.");
     }
   };
+
   useEffect(() => {
     if (auth.currentUser) {
       fetchEnderecoUsuario();
+      buscarEnderecosDoUsuario();
     }
-  }, []);
+  }, [auth.currentUser]); 
 
   const selecionarEndereco = (end) => {
     setEnderecoUser(end.endereco);
@@ -147,57 +184,64 @@ export default function CarrinhoScreen() {
       await deleteDoc(doc(db, "enderecos", id));
       await buscarEnderecosDoUsuario();
 
-      // Força recarregar o CEP original do usuário
-      await fetchEnderecoUsuario(); // ✅ Atualiza o CEP do usuário
+      await fetchEnderecoUsuario(); 
 
-      // Garante que o frete seja recalculado com o CEP original
       const uid = auth.currentUser.uid;
       const snap = await getDoc(doc(db, "users", uid));
       const data = snap.data() || {};
       const cepOriginal = data.cep || "";
 
       if (cepOriginal.length === 8) {
-        await buscarEnderecoPorCEP(cepOriginal); // ✅ Frete calculado com CEP original
+        await buscarEnderecoPorCEP(cepOriginal); 
       }
+      Alert.alert("Sucesso", "Endereço removido!");
     } catch (error) {
       console.error("Erro ao remover endereço:", error);
-      Alert.alert("Erro ao remover endereço");
+      Alert.alert("Erro", "Erro ao remover endereço.");
     }
   };
 
   const calcularTotalCarrinho = () =>
-    carrinho.reduce((sum, item) => sum + item.preco * item.quantidade, 0);
+    carrinho.reduce((sum, item) => sum + (item.preco || 0) * (item.quantidade || 0), 0);
 
   const totalProdutos = calcularTotalCarrinho();
-  const taxaApp = totalProdutos * 0.02; // 2% do subtotal
-  const totalComFrete = (totalProdutos + taxaApp + freteCalculado).toFixed(2);
+  const taxaApp = totalProdutos * 0.02; 
+  const totalComFrete = (totalProdutos + taxaApp + (freteCalculado || 0)).toFixed(2);
 
-  // Função chamada pelos botões "+" e "-"
   const alterarQuantidade = (id, op) => {
-    setCarrinho((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
+    setCarrinho((prev) => {
+      const updatedCart = prev.map((item) => {
+        if (item.id === id) { // 'id' agora é o ID do documento Firestore do item
           const qtd = op === "mais" ? item.quantidade + 1 : item.quantidade - 1;
           const novaQtd = Math.max(1, qtd);
 
-          // Atualiza no Firebase
-          atualizarQuantidadeNoFirebase(id, novaQtd);
+          atualizarQuantidadeNoFirebase(item.id, novaQtd); // Passa o ID do documento do item
 
           return { ...item, quantidade: novaQtd };
         }
         return item;
-      })
-    );
+      });
+      return updatedCart;
+    });
   };
+
+  // Remover item - agora deleta o documento de item específico
   const removerItem = async (itemId) => {
     try {
-      await deleteDoc(doc(db, "carrinho", itemId));
-      // Remover do estado local
-      const atualizado = carrinho.filter((item) => item.id !== itemId);
-      setCarrinho(atualizado);
+      const uid = auth.currentUser?.uid;
+      if (!uid) {
+        Alert.alert("Erro", "Usuário não logado para remover o item.");
+        return;
+      }
 
-      // Remover do Firestore
-      await deleteDoc(doc(db, "carrinho", itemId));
+      // Referência direta ao documento do item no Firestore
+      const itemRef = doc(db, "carrinho", itemId); 
+      await deleteDoc(itemRef); // Deleta o documento do item
+
+      // Atualiza o estado local do carrinho
+      setCarrinho((prev) => prev.filter((item) => item.id !== itemId)); 
+      Alert.alert("Sucesso", "Item removido do carrinho.");
+
     } catch (error) {
       console.error("Erro ao remover item do carrinho:", error);
       Alert.alert("Erro", "Não foi possível remover o item.");
@@ -205,49 +249,56 @@ export default function CarrinhoScreen() {
   };
 
   // Renderizar cada item do carrinho
-  const renderItem = ({ item }) => (
-    <View key={item.id} style={styles.itemCard}>
-      <Image source={{ uri: item.imagem }} style={styles.itemImage} />
-      <View style={styles.itemDetails}>
-        <Text style={styles.itemName}>{item.nome}</Text>
-        <Text style={styles.itemPrice}>R$ {item.preco.toFixed(2)}</Text>
+  const renderItem = ({ item }) => {
+    // Garante que preco e quantidade são números válidos para toFixed
+    const preco = Number(item.preco) || 0;
+    const quantidade = Number(item.quantidade) || 0;
 
-        {/* Controle de Quantidade */}
-        <View style={styles.quantityContainer}>
-          <TouchableOpacity
-            onPress={() => alterarQuantidade(item.id, "menos")}
-            style={styles.quantityButton}
-          >
-            <Text style={styles.quantityText}>-</Text>
-          </TouchableOpacity>
-          <Text style={styles.quantityValue}>{item.quantidade}</Text>
-          <TouchableOpacity
-            onPress={() => alterarQuantidade(item.id, "mais")}
-            style={styles.quantityButton}
-          >
-            <Text style={styles.quantityText}>+</Text>
-          </TouchableOpacity>
+    return (
+      <View key={item.id} style={styles.itemCard}>
+        <Image source={{ uri: item.imagem }} style={styles.itemImage} />
+        <View style={styles.itemDetails}>
+          <Text style={styles.itemName}>{item.nome}</Text>
+          <Text style={styles.itemPrice}>R$ {preco.toFixed(2)}</Text> 
+
+          <View style={styles.quantityContainer}>
+            <TouchableOpacity
+              onPress={() => alterarQuantidade(item.id, "menos")}
+              style={styles.quantityButton}
+            >
+              <Text style={styles.quantityText}>-</Text>
+            </TouchableOpacity>
+            <Text style={styles.quantityValue}>{quantidade}</Text> 
+            <TouchableOpacity
+              onPress={() => alterarQuantidade(item.id, "mais")}
+              style={styles.quantityButton}
+            >
+              <Text style={styles.quantityText}>+</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.totalPrice}>
+            Total: R$ {(preco * quantidade).toFixed(2)}
+          </Text>
         </View>
 
-        <Text style={styles.totalPrice}>
-          Total: R$ {(item.preco * item.quantidade).toFixed(2)}
-        </Text>
+        <TouchableOpacity
+          onPress={() => removerItem(item.id)}
+          style={styles.removeButton}
+        >
+          <Image source={require("../img/Minus.png")} style={styles.removeText} />
+        </TouchableOpacity>
       </View>
-
-      {/* Botão de Remover */}
-      <TouchableOpacity
-        onPress={() => removerItem(item.id)}
-        style={styles.removeButton}
-      >
-        <Image source={require("../img/Minus.png")} style={styles.removeText} />
-      </TouchableOpacity>
-    </View>
-  );
+    );
+  };
 
   const buscarEnderecosDoUsuario = async () => {
     try {
       const uid = auth.currentUser?.uid;
-      if (!uid) return;
+      if (!uid) {
+        setEnderecosSalvos([]);
+        return;
+      }
 
       const q = query(collection(db, "enderecos"), where("uid", "==", uid));
       const snap = await getDocs(q);
@@ -255,6 +306,7 @@ export default function CarrinhoScreen() {
       setEnderecosSalvos(lista);
     } catch (err) {
       console.error("Erro ao buscar endereços:", err);
+      Alert.alert("Erro", "Não foi possível buscar endereços salvos.");
     }
   };
 
@@ -266,6 +318,11 @@ export default function CarrinhoScreen() {
       const data = await response.json();
       if (data.erro) {
         Alert.alert("CEP não encontrado");
+        setEnderecoInput("");
+        setBairroInput("");
+        setCidadeInput("");
+        setEstadoInput("");
+        setFreteCalculado(null); 
         return;
       }
 
@@ -274,13 +331,12 @@ export default function CarrinhoScreen() {
       setCidadeInput(data.localidade || "");
       setEstadoInput(data.uf || "");
 
-      // Converter CEP para número
-      const cepNumero = parseInt(cepDigitado);
+      const cepNumero = parseInt(cepDigitado.replace(/\D/g, '')); 
 
       let novoFrete;
 
       if (cepNumero >= 12500001 && cepNumero <= 12505001) {
-        novoFrete = 3; // Frete grátis
+        novoFrete = 3; 
       } else if (cepNumero >= 12505002 && cepNumero <= 12510001) {
         novoFrete = 5;
       } else if (cepNumero >= 12510002 && cepNumero <= 12515001) {
@@ -298,12 +354,13 @@ export default function CarrinhoScreen() {
     } catch (err) {
       Alert.alert("Erro ao buscar CEP");
       console.error(err);
+      setFreteCalculado(null); 
     }
   };
 
   const salvarEndereco = async () => {
-    if (!cep || !enderecoInput || !numeroInput || !bairroInput) {
-      return Alert.alert("Preencha todos os campos de endereço");
+    if (!cep || !enderecoInput || !numeroInput || !bairroInput || !cidadeInput || !estadoInput) {
+      return Alert.alert("Erro", "Preencha todos os campos de endereço.");
     }
     try {
       const uid = auth.currentUser.uid;
@@ -319,29 +376,44 @@ export default function CarrinhoScreen() {
       });
       setEditandoEndereco(false);
       buscarEnderecosDoUsuario();
+      Alert.alert("Sucesso", "Endereço salvo!");
     } catch (err) {
       console.error("Erro ao salvar endereço:", err);
-      Alert.alert("Erro ao salvar endereço");
+      Alert.alert("Erro", "Erro ao salvar endereço.");
     }
   };
 
-  useEffect(() => {
-    if (auth.currentUser) {
-      fetchEnderecoUsuario();
-      buscarEnderecosDoUsuario();
+  // Limpar carrinho agora deleta todos os documentos de item do usuário
+  const clearCartForPaymentScreen = async () => {
+    setCarrinho([]); // Limpa o estado local imediatamente
+    console.log("Carrinho local limpo pela CarrinhoScreen.");
+
+    if (auth.currentUser && auth.currentUser.uid) {
+      try {
+        const uid = auth.currentUser.uid;
+        const q = query(collection(db, "carrinho"), where("uid", "==", uid));
+        const snapshot = await getDocs(q);
+
+        // Deleta cada documento de item individualmente
+        const batchDeletes = snapshot.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(batchDeletes); // Espera todas as deleções serem concluídas
+
+        console.log(`Todos os ${snapshot.docs.length} itens do carrinho do usuário (UID: ${uid}) foram limpos no Firestore.`);
+      } catch (error) {
+        console.error("Erro ao limpar carrinho persistente no Firestore pela CarrinhoScreen:", error);
+        Alert.alert("Erro", "Não foi possível limpar seu carrinho online. Por favor, tente novamente mais tarde.");
+      }
     }
-  }, []);
+  };
 
   return (
-    <SafeAreaView>
+    <SafeAreaView style={{ flex: 1 }}> 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.carrinho}>Carrinho</Text>
         <View style={styles.enderecoContainer}>
           <TouchableOpacity
             style={{
               flexDirection: "row",
-              alignItems: "center",
-
               alignItems: "center",
               marginBottom: hp("0.7"),
             }}
@@ -500,18 +572,20 @@ export default function CarrinhoScreen() {
               </Text>
             </View>
             <Text style={styles.resumoValor}>
-              R$ {totalProdutos.toFixed(2)}
+              {/* Garante que totalProdutos é um número antes de toFixed */}
+              R$ {(Number(totalProdutos) || 0).toFixed(2)}
             </Text>
           </View>
 
           {/* Taxa */}
           <View style={styles.resumoLinha}>
             <TouchableOpacity
-              onPress={() => alert("Taxa de 2% cobrada pela plataforma")}
+              onPress={() => Alert.alert("Taxa de Serviço", "Taxa de 2% cobrada pela plataforma")}
             >
               <Text style={styles.resumoLabel}>Taxa de Serviço (2%) ⓘ</Text>
             </TouchableOpacity>
-            <Text style={styles.resumoValor}>R$ {taxaApp.toFixed(2)}</Text>
+            {/* Garante que taxaApp é um número antes de toFixed */}
+            <Text style={styles.resumoValor}>R$ {(Number(taxaApp) || 0).toFixed(2)}</Text>
           </View>
 
           {/* Frete */}
@@ -525,8 +599,8 @@ export default function CarrinhoScreen() {
             >
               {freteCalculado === 0
                 ? "Grátis"
-                : freteCalculado
-                  ? `R$ ${freteCalculado.toFixed(2)}`
+                : freteCalculado !== null 
+                  ? `R$ ${(Number(freteCalculado) || 0).toFixed(2)}` 
                   : "---"}
             </Text>
           </View>
@@ -543,9 +617,12 @@ export default function CarrinhoScreen() {
             style={styles.continuarButton}
             onPress={() =>
               navigation.navigate("Pagamento", {
-                carrinho,
+                // O carrinho já está mapeado com preco/quantidade como números
+                carrinho: carrinho, 
                 frete: freteCalculado,
                 cep: cep,
+                onClearCart: clearCartForPaymentScreen, 
+                onHomeRefresh: onHomeRefresh, 
               })
             }
           >
@@ -586,32 +663,45 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "blue",
   },
-  enderecoActions: {
+  enderecoActions: { 
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 8,
     borderWidth: 1,
     borderColor: "blue",
   },
-  usarBtn: {
+  enderecoInfo: { 
     flex: 1,
-    marginRight: 6,
-    backgroundColor: "#4CAF50",
-    paddingVertical: 6,
-    borderRadius: 4,
   },
-  apagarBtn: {
-    flex: 1,
-    marginLeft: 6,
-    backgroundColor: "#e74c3c",
-    paddingVertical: 6,
-    borderRadius: 4,
+  enderecoAcoes: { 
+    flexDirection: "row",
+    justifyContent: "space-around", 
+    alignItems: "center",
+    marginLeft: 10,
   },
-  btnText: {
+  enderecoBotaoUsar: { 
+    backgroundColor: '#4CAF50',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+    marginRight: 5,
+  },
+  enderecoBotaoExcluir: { 
+    backgroundColor: '#e74c3c',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 5,
+  },
+  enderecoBotaoTexto: { 
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  btnText: { 
     color: "#fff",
     textAlign: "center",
   },
-  editarEndereco: {
+  editarEndereco: { 
     color: "#007bff",
     marginTop: 8,
   },
@@ -740,8 +830,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   removeText: {
-    color: "#e74c3c",
-    fontSize: hp("4"),
+    width: hp("4"), 
+    height: hp("4"), 
+    resizeMode: 'contain', 
   },
   fornecedorGroup: {
     marginBottom: hp("2"),
@@ -774,4 +865,18 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginVertical: 20,
   },
+  botaoAdicionarEndereco: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingVertical: hp('1.5'),
+  },
+  formularioEndereco: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    padding: 15,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  }
 });
