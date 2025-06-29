@@ -10,13 +10,27 @@ import {
   ImageBackground,
   Alert,
 } from "react-native";
-import { collection, getDocs, addDoc, doc, deleteDoc, query, where } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  doc,
+  deleteDoc,
+  query,
+  where,
+} from "firebase/firestore";
 import { db, auth } from "../firebaseConfig";
 import { Picker } from "@react-native-picker/picker";
-import { useNavigation, useRoute, useIsFocused, } from "@react-navigation/native";
+import {
+  useNavigation,
+  useRoute,
+  useIsFocused,
+} from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { wp, hp } from "../src/utils/responsive";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+const MENU_INFERIOR_HEIGHT = hp("6%");
 
 export default function HomeScreen() {
   const [produtos, setProdutos] = useState([]);
@@ -27,6 +41,7 @@ export default function HomeScreen() {
   const [fornecedores, setFornecedores] = useState({});
   const navigation = useNavigation();
   const isFocused = useIsFocused();
+  const insets = useSafeAreaInsets();
   useEffect(() => {
     const fetchDados = async () => {
       try {
@@ -38,39 +53,44 @@ export default function HomeScreen() {
         setProdutos(produtosData);
 
         // Buscar fornecedores
-        const fornecedoresSnapshot = await getDocs(collection(db, "fornecedores"));
+        const fornecedoresSnapshot = await getDocs(
+          collection(db, "fornecedores")
+        );
         const dadosFornecedores = {};
         fornecedoresSnapshot.forEach((doc) => {
           const data = doc.data();
           dadosFornecedores[data.email] = data.empresa;
         });
         setFornecedores(dadosFornecedores);
- // Carregar carrinho do Firebase
-// Carregar carrinho do usuário atual
-// Carregar carrinho do usuário atual
-const carregarCarrinho = async () => {
-  try {
-    const uid = auth.currentUser?.uid;
-    if (!uid) return;
+        // Carregar carrinho do Firebase
+        // Carregar carrinho do usuário atual
+        // Carregar carrinho do usuário atual
+        const carregarCarrinho = async () => {
+          try {
+            const uid = auth.currentUser?.uid;
+            if (!uid) return;
 
-    const q = query(collection(db, "carrinho"), where("uid", "==", uid));
-    const snapshot = await getDocs(q);
+            const q = query(
+              collection(db, "carrinho"),
+              where("uid", "==", uid)
+            );
+            const snapshot = await getDocs(q);
 
-    const lista = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
+            const lista = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            }));
 
-    const carrinhoMap = {};
-    lista.forEach((item) => {
-      carrinhoMap[item.produtoId] = item;
-    });
+            const carrinhoMap = {};
+            lista.forEach((item) => {
+              carrinhoMap[item.produtoId] = item;
+            });
 
-    setCarrinho(carrinhoMap);
-  } catch (error) {
-    console.error("Erro ao carregar carrinho:", error);
-  }
-};
+            setCarrinho(carrinhoMap);
+          } catch (error) {
+            console.error("Erro ao carregar carrinho:", error);
+          }
+        };
 
         // Inicializar quantidades
         const quantidadesIniciais = {};
@@ -85,7 +105,7 @@ const carregarCarrinho = async () => {
 
     fetchDados();
   }, []);
-  
+
   useEffect(() => {
     const fetchProdutos = async () => {
       try {
@@ -144,7 +164,7 @@ const carregarCarrinho = async () => {
         preco: Number(produto.preco),
         quantidade: qtd,
         timestamp: new Date(),
-        fornecedor: fornecedores[produto.fornecedor] // ✅ Vamos corrigir isso abaixo
+        fornecedor: fornecedores[produto.fornecedor], // ✅ Vamos corrigir isso abaixo
       });
 
       setCarrinho((prev) => ({
@@ -175,7 +195,7 @@ const carregarCarrinho = async () => {
       typeof item.imagem === "string" && item.imagem.trim() !== ""
         ? item.imagem
         : "https://via.placeholder.com/150";
-  
+
     const comprado = carrinho[item.id] !== undefined;
     return (
       <View style={styles.itemContainer}>
@@ -263,65 +283,50 @@ const carregarCarrinho = async () => {
         backgroundColor: "#fff",
       }}
     >
-      {/* Ícone do carrinho */}
-      <View
-        style={{
-          flexDirection: "row",
-          justifyContent: "flex-end",
-          paddingHorizontal: 15,
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => {
-            navigation.navigate("Carrinho", {
-              carrinho: Object.values(carrinho),
-            });
-          }}
-        >
-           <View style={styles.header}>
-          <Image
-            source={require("../img/logo.png")} // seu logo
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <View style={styles.iconRow}>
-            <TouchableOpacity onPress={() => navigation.navigate("Pedidos")}>
+      <View style={styles.header}>
+        <Image
+          source={require("../img/logo.png")} // seu logo
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <View style={styles.iconRow}>
+          <TouchableOpacity onPress={() => navigation.navigate("Pedidos")}>
             <Image
-                  source={require("../img/pedido.png")} // Caminho para sua imagem local
-                  style={{ width: 28, height: 28 }}
-                  resizeMode="contain"
-                />
-            </TouchableOpacity>
-            </View>
-            <View style={styles.iconRow}>
-              <TouchableOpacity onPress={() => navigation.navigate("Perfil")}>
-                <Image
-                  source={require("../img/profilehome.png")} // Caminho para sua imagem local
-                  style={{ width: 28, height: 28 }}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => {
-                  navigation.navigate("Carrinho", {
-                    carrinho: Object.values(carrinho),
-                  });
-                }}
-              >
-                <Image
-                  source={require("../img/Cart.png")} // Caminho para sua imagem local
-                  style={{ width: 28, height: 28 }}
-                  resizeMode="contain"
-                />
-               {Object.keys(carrinho).length > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{Object.keys(carrinho).length}</Text>
-            </View>
-          )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </TouchableOpacity>
+              source={require("../img/pedido.png")} // Caminho para sua imagem local
+              style={{ width: 28, height: 28 }}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.iconRow}>
+          <TouchableOpacity onPress={() => navigation.navigate("Perfil")}>
+            <Image
+              source={require("../img/profilehome.png")} // Caminho para sua imagem local
+              style={{ width: 28, height: 28 }}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              navigation.navigate("Carrinho", {
+                carrinho: Object.values(carrinho),
+              });
+            }}
+          >
+            <Image
+              source={require("../img/Cart.png")} // Caminho para sua imagem local
+              style={{ width: 28, height: 28 }}
+              resizeMode="contain"
+            />
+            {Object.keys(carrinho).length > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {Object.keys(carrinho).length}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <Text style={styles.tituloFiltro}>Filtrar por categoria</Text>
@@ -405,8 +410,12 @@ const carregarCarrinho = async () => {
 
       <FlatList
         data={produtos.filter((p) => {
-          const categoriaOk = categoriaSelecionada ? p.categoria === categoriaSelecionada : true;
-          const fornecedorOk = fornecedorSelecionado ? p.fornecedor === fornecedorSelecionado : true;
+          const categoriaOk = categoriaSelecionada
+            ? p.categoria === categoriaSelecionada
+            : true;
+          const fornecedorOk = fornecedorSelecionado
+            ? p.fornecedor === fornecedorSelecionado
+            : true;
           return categoriaOk && fornecedorOk;
         })}
         keyExtractor={(item) => item.id}
@@ -451,9 +460,9 @@ const styles = StyleSheet.create({
   },
   itemContainer: {
     flexDirection: "row",
-    paddingVertical: hp(2), // um pouco mais de espaço
+    paddingVertical: hp(1.7), // um pouco mais de espaço
     paddingHorizontal: wp(1.5),
-    borderBottomWidth: 2,
+    borderBottomWidth: 1,
     borderColor: "#ddd",
     backgroundColor: "#fff",
     // centraliza a imagem com o conteúdo
