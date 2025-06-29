@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "hortifruti-app",
-    "slug": "hortifruti-app",
+    "name": "FrutiWay",
+    "slug": "FrutiWay",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
