@@ -59,6 +59,7 @@ export default function FornecedorScreen() {
   const [tipoPreco, setTipoPreco] = useState("unidade");
   const [tipoEstoque, setTipoEstoque] = useState("unidade");
   const user = getAuth().currentUser;
+  const [loading, setLoading] = useState(true);
 
   // Obtém os insets da área segura do dispositivo
   const insets = useSafeAreaInsets();
@@ -91,7 +92,9 @@ export default function FornecedorScreen() {
   }, [user]);
 
   const carregarProdutos = async () => {
+    setLoading(true);
     const produtosRef = collection(db, "produtos");
+
     const q = query(produtosRef, where("fornecedor_uid", "==", user.uid));
     const querySnapshot = await getDocs(q);
 
@@ -110,6 +113,7 @@ export default function FornecedorScreen() {
 
     setProdutosAtivos(ativos);
     setProdutosVendidos(vendidos);
+    setLoading(false);
   };
 
   const buscarImagemPorNome = async (produtoNome) => {
@@ -408,48 +412,61 @@ export default function FornecedorScreen() {
           </TouchableOpacity>
 
           {/* Lista de Produtos */}
-          <FlatList
-            data={aplicarFiltrosEOrdenacao(produtosAtivos)}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.productCard}>
-                <Image
-                  source={{ uri: item.imagem || "https://picsum.photos/200" }}
-                  style={styles.productImage}
-                />
-                <View style={styles.productDetails}>
-                  <Text style={styles.productName}>{item.nome}</Text>
-                  <Text style={styles.productPrice}>
-                    {formatarPreco(item.preco)}
-                  </Text>
-                  <Text style={styles.productStock}>
-                    Estoque: {item.estoque} {item.tipoEstoque}
-                  </Text>
+          {loading ? (
+            <>
+              {/* Skeleton para loading */}
+              {[1, 2, 3].map((_, index) => (
+                <View key={index} style={styles.skeletonCard}>
+                  <View style={styles.skeletonImage} />
+                  <View style={styles.skeletonText} />
+                  <View style={styles.skeletonText} />
                 </View>
-                <View style={styles.productActions}>
-                  <TouchableOpacity
-                    style={styles.actionButtonEdit}
-                    onPress={() => editarProduto(item)}
-                  >
-                    <Text style={styles.actionText}>Editar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.actionButtonExcluir}
-                    onPress={() => excluirProduto(item.id)}
-                  >
-                    <Text style={styles.actionText}>Excluir</Text>
-                  </TouchableOpacity>
+              ))}
+            </>
+          ) : (
+            <FlatList
+              data={aplicarFiltrosEOrdenacao(produtosAtivos)}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <View style={styles.productCard}>
+                  <Image
+                    source={{ uri: item.imagem || "https://picsum.photos/200" }}
+                    style={styles.productImage}
+                  />
+                  <View style={styles.productDetails}>
+                    <Text style={styles.productName}>{item.nome}</Text>
+                    <Text style={styles.productPrice}>
+                      {formatarPreco(item.preco)}
+                    </Text>
+                    <Text style={styles.productStock}>
+                      Estoque: {item.estoque} {item.tipoEstoque}
+                    </Text>
+                  </View>
+                  <View style={styles.productActions}>
+                    <TouchableOpacity
+                      style={styles.actionButtonEdit}
+                      onPress={() => editarProduto(item)}
+                    >
+                      <Text style={styles.actionText}>Editar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.actionButtonExcluir}
+                      onPress={() => excluirProduto(item.id)}
+                    >
+                      <Text style={styles.actionText}>Excluir</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            )}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>Nenhum produto encontrado.</Text>
-            }
-            contentContainerStyle={{
-              paddingBottom: MENU_INFERIOR_HEIGHT + insets.bottom + hp("10%"), // Espaço dinâmico para menu inferior
-              paddingTop: hp("1.5%"), // Espaço acima da lista
-            }}
-          />
+              )}
+              ListEmptyComponent={
+                <Text style={styles.emptyText}>Nenhum produto encontrado.</Text>
+              }
+              contentContainerStyle={{
+                paddingBottom: MENU_INFERIOR_HEIGHT + insets.bottom + hp("10%"), // Espaço dinâmico para menu inferior
+                paddingTop: hp("1.5%"), // Espaço acima da lista
+              }}
+            />
+          )}
         </View>
       )}
 
@@ -656,6 +673,7 @@ export default function FornecedorScreen() {
             style={[
               styles.menuIcon,
               telaAtual === "dashboard" && styles.menuIconActive,
+              ,
             ]}
           />
           <Text
@@ -699,6 +717,7 @@ const styles = StyleSheet.create({
     paddingBottom: hp("10"),
     // paddingTop: insets.top será aplicado diretamente no componente
   },
+
   cadastro: {
     paddingHorizontal: hp("2"),
   },
@@ -998,6 +1017,7 @@ const styles = StyleSheet.create({
   menuItem: {
     flex: 1,
     alignItems: "center",
+    transition: "all 0.3s ease", // Anima mudanças de estilo
   },
 
   menuIcon: {
@@ -1012,10 +1032,32 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   menuIconActive: {
-    tintColor: "#000000", // Preto para o ícone ativo
+    transform: [{ scale: 1.2 }],
+
+    tintColor: "#000", // Preto para o ícone ativo
   },
   menuTextActive: {
     color: "#000000", // Preto para o texto ativo
     // Opcional: deixar em negrito
+  },
+  skeletonCard: {
+    backgroundColor: "#f5f5f5",
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 15,
+    marginHorizontal: wp("4%"),
+  },
+  skeletonImage: {
+    height: hp("12%"),
+    backgroundColor: "#e0e0e0",
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  skeletonText: {
+    height: hp("2%"),
+    backgroundColor: "#e0e0e0",
+    borderRadius: 4,
+    marginBottom: 6,
+    width: "70%",
   },
 });
