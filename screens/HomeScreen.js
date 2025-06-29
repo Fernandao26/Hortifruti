@@ -31,6 +31,7 @@ import { wp, hp } from "../src/utils/responsive";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Lottie from "lottie-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // *******************************************************************
 // IMPORTANTE: Importe o componente LoadingScreenWithLottie que você criou
@@ -44,7 +45,8 @@ export default function HomeScreen() {
   // Estado para controlar a exibição da animação de boas-vindas
   const [showWelcomeAnimation, setShowWelcomeAnimation] = useState(true);
   // Estado para controlar se os dados já foram carregados
-  const [dataLoaded, setDataLoaded] = useState(false); // NOVO ESTADO
+  const [dataLoaded, setDataLoaded] = useState(false);
+  const [hasShownWelcome, setHasShownWelcome] = useState(false); // NOVO ESTADO
 
   const [produtos, setProdutos] = useState([]);
   const [categoriaSelecionada, setCategoriaSelecionada] = useState("");
@@ -60,11 +62,40 @@ export default function HomeScreen() {
   // *******************************************************************
   // NOVO useEffect para carregar TODOS OS DADOS APÓS A ANIMAÇÃO
   useEffect(() => {
-    // Só inicia a busca de dados se a animação terminou E os dados ainda não foram carregados
+    // Função assíncrona para lidar com o AsyncStorage
+    const checkWelcomeAnimation = async () => {
+      try {
+        // Verifica se a animação já foi mostrada antes
+        const value = await AsyncStorage.getItem("hasShownWelcomeAnimation");
+        if (value === "true") {
+          setHasShownWelcome(true);
+          setShowWelcomeAnimation(false); // Se já mostrou, não exibe agora
+        } else {
+          // Se não mostrou, exibe a animação
+          setShowWelcomeAnimation(true);
+          // Marca que a animação já foi exibida após a conclusão (ou imediatamente, dependendo da sua preferência)
+          // Vamos fazer isso na prop onAnimationFinish do LottieView, como você já tem.
+        }
+      } catch (e) {
+        console.error("Erro ao ler AsyncStorage:", e);
+        // Em caso de erro, por segurança, assume que a animação não precisa ser exibida
+        setShowWelcomeAnimation(false);
+        setHasShownWelcome(true); // Assume que deve pular
+      }
+    };
+
+    // Chamada inicial para verificar a animação
+    checkWelcomeAnimation();
+  }, []); // O array vazio [] garante que este useEffect roda apenas uma vez no montagem do componente.
+
+  // SEU useEffect DE CARREGAMENTO DE DADOS (certifique-se de que ele só roda depois da animação)
+  useEffect(() => {
+    // Esta parte só roda se a animação de boas-vindas não estiver mais visível (showWelcomeAnimation é false)
+    // E os dados ainda não foram carregados (dataLoaded é false)
     if (!showWelcomeAnimation && !dataLoaded) {
       const fetchDados = async () => {
+        // ... (seu código existente para buscar produtos, fornecedores, carrinho, etc.)
         try {
-          // --- Buscar Produtos ---
           const querySnapshot = await getDocs(collection(db, "produtos"));
           const produtosData = querySnapshot.docs.map((doc) => ({
             id: doc.id,
@@ -72,14 +103,6 @@ export default function HomeScreen() {
           }));
           setProdutos(produtosData);
 
-          // Inicializar quantidades (após carregar produtos)
-          const quantidadesIniciais = {};
-          produtosData.forEach((p) => {
-            quantidadesIniciais[p.id] = 1;
-          });
-          setQuantidades(quantidadesIniciais);
-
-          // --- Buscar Fornecedores ---
           const fornecedoresSnapshot = await getDocs(
             collection(db, "fornecedores")
           );
@@ -90,7 +113,6 @@ export default function HomeScreen() {
           });
           setFornecedores(dadosFornecedores);
 
-          // --- Carregar Carrinho do usuário atual ---
           const uid = auth.currentUser?.uid;
           if (uid) {
             const q = query(
@@ -107,17 +129,23 @@ export default function HomeScreen() {
             setCarrinho(carrinhoMap);
           }
 
-          // Marca que todos os dados foram carregados
+          const quantidadesIniciais = {};
+          produtosData.forEach((p) => {
+            quantidadesIniciais[p.id] = 1;
+          });
+          setQuantidades(quantidadesIniciais);
+
           setDataLoaded(true);
         } catch (error) {
           console.error("Erro ao buscar dados na HomeScreen:", error);
-          // Você pode adicionar um Alert.alert para o usuário aqui se quiser
         }
       };
 
       fetchDados();
     }
-  }, [showWelcomeAnimation, dataLoaded]); // Dependências: showWelcomeAnimation e dataLoaded
+  }, [showWelcomeAnimation, dataLoaded]); // Dependências: Roda quando showWelcomeAnimation ou dataLoaded mudam
+
+  // ... o restante do seu componente// Dependências: showWelcomeAnimation e dataLoaded
   // *******************************************************************
 
   // Removido o useEffect duplicado para fetchProdutos, pois ele foi integrado no useEffect acima
@@ -278,9 +306,17 @@ export default function HomeScreen() {
     // LÓGICA DE RENDERIZAÇÃO CONDICIONAL DA ANIMAÇÃO OU CONTEÚDO PRINCIPAL
     <>
       {showWelcomeAnimation ? (
-        // Se showWelcomeAnimation for true, mostre a animação de boas-vindas
         <LoadingScreenWithLottie
-          onAnimationFinish={() => setShowWelcomeAnimation(false)}
+          onAnimationFinish={async () => {
+            setShowWelcomeAnimation(false); // Esconde a animação
+            try {
+              // SALVA NO ASYNCSTORAGE QUE A ANIMAÇÃO JÁ FOI EXIBIDA
+              await AsyncStorage.setItem("hasShownWelcomeAnimation", "true");
+              setHasShownWelcome(true); // Marca que a animação já foi exibida
+            } catch (e) {
+              console.error("Erro ao salvar no AsyncStorage:", e);
+            }
+          }}
         />
       ) : (
         // Se showWelcomeAnimation for false, mostre o conteúdo normal da HomeScreen
