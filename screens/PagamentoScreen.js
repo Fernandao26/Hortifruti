@@ -8,16 +8,25 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
-  Platform, 
+  Platform,
   Clipboard,
-  ScrollView, 
+  ScrollView,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 import { auth, db, functions } from "../firebaseConfig";
-import { doc, getDoc, collection, addDoc, updateDoc, serverTimestamp, runTransaction, FieldValue } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  collection,
+  addDoc,
+  updateDoc,
+  serverTimestamp,
+  runTransaction,
+  FieldValue,
+} from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -43,21 +52,27 @@ const PagamentoScreen = ({ route }) => {
 
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [idToken, setIdToken] = useState(null); 
-  const [metodoPagamento, setMetodoPagamento] = useState("Pix"); 
-  const [enderecoCompleto, setEnderecoCompleto] = useState("Carregando endereço...");
-  const [usuarioDataFromFirestore, setUsuarioDataFromFirestore] = useState(null);
-  const [horarioEntrega, setHorarioEntrega] = useState("manhã"); 
-  const [dataEntrega, setDataEntrega] = useState(new Date()); 
+  const [idToken, setIdToken] = useState(null);
+  const [metodoPagamento, setMetodoPagamento] = useState("Pix");
+  const [enderecoCompleto, setEnderecoCompleto] = useState(
+    "Carregando endereço..."
+  );
+  const [usuarioDataFromFirestore, setUsuarioDataFromFirestore] =
+    useState(null);
+  const [horarioEntrega, setHorarioEntrega] = useState("manhã");
+  const [dataEntrega, setDataEntrega] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePickerModal, setShowTimePickerModal] = useState(false); 
+  const [showTimePickerModal, setShowTimePickerModal] = useState(false);
 
   const [showPixModal, setShowPixModal] = useState(false);
-  const [pixCodeToDisplay, setPixCodeToDisplay] = useState('');
+  const [pixCodeToDisplay, setPixCodeToDisplay] = useState("");
   const [currentOrderId, setCurrentOrderId] = useState(null);
 
   const calcularSubtotal = () =>
-    carrinho.reduce((sum, item) => sum + (item.preco || 0) * (item.quantidade || 0), 0);
+    carrinho.reduce(
+      (sum, item) => sum + (item.preco || 0) * (item.quantidade || 0),
+      0
+    );
 
   const taxaServico = calcularSubtotal() * 0.02;
   const freteCalculado = typeof frete === "number" ? frete : 7;
@@ -69,27 +84,29 @@ const PagamentoScreen = ({ route }) => {
 
   const fornecedoresUnicos = Array.from(
     new Set(
-      carrinho.map(
-        (item) => (item.nomeFornecedor || item.fornecedor || "Desconhecido")?.toString().trim()
+      carrinho.map((item) =>
+        (item.nomeFornecedor || item.fornecedor || "Desconhecido")
+          ?.toString()
+          .trim()
       )
     )
   );
 
   const isHolidayOrSunday = (date) => {
-    const dayOfWeek = date.getDay(); 
-    if (dayOfWeek === 0) { 
+    const dayOfWeek = date.getDay();
+    if (dayOfWeek === 0) {
       return true;
     }
 
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    const day = date.getDate().toString().padStart(2, "0");
     const formattedDate = `${month}-${day}`;
-    
+
     const currentYear = date.getFullYear();
-    if (currentYear === 2025) { 
+    if (currentYear === 2025) {
       return NATIONAL_HOLIDAYS_2025.includes(formattedDate);
     }
-    return false; 
+    return false;
   };
 
   useEffect(() => {
@@ -112,13 +129,13 @@ const PagamentoScreen = ({ route }) => {
             const userDoc = await getDoc(doc(db, "users", user.uid));
             if (userDoc.exists()) {
               const data = userDoc.data();
-              setUsuarioDataFromFirestore(data); 
-              const endereco = data.endereco?.toString().trim() || '';
-              const numero = data.numero?.toString().trim() || '';
-              const bairro = data.bairro?.toString().trim() || '';
-              const cidade = data.cidade?.toString().trim() || '';
-              const estado = data.estado?.toString().trim() || '';
-              const cepData = data.cep?.toString().trim() || '';
+              setUsuarioDataFromFirestore(data);
+              const endereco = data.endereco?.toString().trim() || "";
+              const numero = data.numero?.toString().trim() || "";
+              const bairro = data.bairro?.toString().trim() || "";
+              const cidade = data.cidade?.toString().trim() || "";
+              const estado = data.estado?.toString().trim() || "";
+              const cepData = data.cep?.toString().trim() || "";
 
               const fullAddress = `${endereco}, ${numero} - ${bairro}\n${cidade} - ${estado}, CEP ${cepData}`;
               setEnderecoCompleto(fullAddress);
@@ -128,14 +145,14 @@ const PagamentoScreen = ({ route }) => {
                 "PagamentoScreen: Documento do usuário não encontrado no Firestore para UID:",
                 user.uid
               );
-              setEnderecoCompleto("Endereço não cadastrado."); 
+              setEnderecoCompleto("Endereço não cadastrado.");
             }
           } catch (error) {
             console.error(
               "PagamentoScreen: Erro ao carregar dados do usuário do Firestore (dentro do onAuthStateChanged):",
               error
             );
-            setEnderecoCompleto("Erro ao carregar endereço."); 
+            setEnderecoCompleto("Erro ao carregar endereço.");
           }
         }
       } else {
@@ -145,11 +162,11 @@ const PagamentoScreen = ({ route }) => {
         setCurrentUser(null);
         setIdToken(null);
         setUsuarioDataFromFirestore(null);
-        setEnderecoCompleto("Você não está logado."); 
+        setEnderecoCompleto("Você não está logado.");
       }
     });
     return () => unsubscribeAuth();
-  }, []); 
+  }, []);
 
   useEffect(() => {
     const isSpecialDay = isHolidayOrSunday(dataEntrega);
@@ -157,60 +174,86 @@ const PagamentoScreen = ({ route }) => {
 
     let newHorarioToSet = horarioEntrega;
 
-    if (isSpecialDay) { 
-      if (horarioEntrega !== 'manhã') {
-        newHorarioToSet = 'manhã';
+    if (isSpecialDay) {
+      if (horarioEntrega !== "manhã") {
+        newHorarioToSet = "manhã";
       }
-    } else if (dayOfWeek === 6) { 
-      if (horarioEntrega === 'noite') {
-        newHorarioToSet = 'manhã'; 
+    } else if (dayOfWeek === 6) {
+      if (horarioEntrega === "noite") {
+        newHorarioToSet = "manhã";
       }
-    } 
-    
+    }
+
     if (newHorarioToSet !== horarioEntrega) {
       setHorarioEntrega(newHorarioToSet);
-      console.log("Horário de Entrega ajustado para:", newHorarioToSet, "devido à mudança de data.");
+      console.log(
+        "Horário de Entrega ajustado para:",
+        newHorarioToSet,
+        "devido à mudança de data."
+      );
     }
   }, [dataEntrega]);
 
   const handleCopyPix = () => {
     if (pixCodeToDisplay) {
-      Clipboard.setString(pixCodeToDisplay.toString().trim()); 
-      Alert.alert("Copiado!", "Código PIX copiado para a área de transferência.");
+      Clipboard.setString(pixCodeToDisplay.toString().trim());
+      Alert.alert(
+        "Copiado!",
+        "Código PIX copiado para a área de transferência."
+      );
     }
   };
 
-  const handlePixOk = async () => { 
-    setShowPixModal(false); 
+  const handlePixOk = async () => {
+    setShowPixModal(false);
 
-    if (onClearCart && typeof onClearCart === 'function') {
+    if (onClearCart && typeof onClearCart === "function") {
       onClearCart();
-      console.log("Carrinho limpo através da função onClearCart (estado local).");
+      console.log(
+        "Carrinho limpo através da função onClearCart (estado local)."
+      );
     } else {
-      console.warn("onClearCart não foi fornecido ou não é uma função. O carrinho local pode não ser limpo.");
+      console.warn(
+        "onClearCart não foi fornecido ou não é uma função. O carrinho local pode não ser limpo."
+      );
     }
 
     if (currentUser && currentUser.uid) {
       try {
-        const userCartRef = doc(db, "carts", currentUser.uid); 
-        await updateDoc(userCartRef, { items: [] }); 
-        console.log("Carrinho persistente do usuário (UID:", currentUser.uid, ") limpo no Firestore.");
+        const userCartRef = doc(db, "carts", currentUser.uid);
+        await updateDoc(userCartRef, { items: [] });
+        console.log(
+          "Carrinho persistente do usuário (UID:",
+          currentUser.uid,
+          ") limpo no Firestore."
+        );
       } catch (error) {
-        console.error("Erro ao limpar carrinho persistente no Firestore:", error);
-        Alert.alert("Erro", "Não foi possível limpar seu carrinho online. Por favor, tente novamente mais tarde.");
+        console.error(
+          "Erro ao limpar carrinho persistente no Firestore:",
+          error
+        );
+        Alert.alert(
+          "Erro",
+          "Não foi possível limpar seu carrinho online. Por favor, tente novamente mais tarde."
+        );
       }
     } else {
-      console.warn("Não foi possível limpar o carrinho persistente: Usuário não logado ou UID ausente.");
+      console.warn(
+        "Não foi possível limpar o carrinho persistente: Usuário não logado ou UID ausente."
+      );
     }
 
-    navigation.navigate("Pedidos"); 
+    navigation.navigate("Pedidos");
   };
 
   const onChangeDate = (event, selectedDate) => {
     const currentDate = selectedDate || dataEntrega;
-    setShowDatePicker(Platform.OS === 'ios');
+    setShowDatePicker(Platform.OS === "ios");
     setDataEntrega(currentDate);
-    console.log("Data de Entrega selecionada:", currentDate.toLocaleDateString('pt-BR'));
+    console.log(
+      "Data de Entrega selecionada:",
+      currentDate.toLocaleDateString("pt-BR")
+    );
   };
 
   const showDatepicker = () => {
@@ -222,24 +265,26 @@ const PagamentoScreen = ({ route }) => {
     const isSpecialDay = isHolidayOrSunday(dataEntrega);
     const dayOfWeek = dataEntrega.getDay();
 
-    if (isSpecialDay) { 
+    if (isSpecialDay) {
       options.push({ label: "Manhã (8h - 13h)", value: "manhã" });
-    } else if (dayOfWeek === 6) { 
+    } else if (dayOfWeek === 6) {
       options.push(
         { label: "Manhã (7h - 12h)", value: "manhã" },
         { label: "Tarde (12h - 19h)", value: "tarde" }
       );
-    } else { 
+    } else {
       options.push(
         { label: "Manhã (7h - 12h)", value: "manhã" },
         { label: "Tarde (12h - 18h)", value: "tarde" },
         { label: "Noite (18h - 21h)", value: "noite" }
       );
     }
-    console.log("Opções de horário disponíveis (getAvailableTimeOptions):", options);
+    console.log(
+      "Opções de horário disponíveis (getAvailableTimeOptions):",
+      options
+    );
     return options;
   }, [dataEntrega]);
-
 
   const finalizarPedido = async () => {
     console.log("PagamentoScreen: Finalizar Pedido clicado.");
@@ -259,25 +304,35 @@ const PagamentoScreen = ({ route }) => {
       return;
     }
 
-    const cpfClienteRaw = usuarioDataFromFirestore?.cpf; 
-    const cpfCliente = cpfClienteRaw ? String(cpfClienteRaw).replace(/\D/g, '') : null; 
+    const cpfClienteRaw = usuarioDataFromFirestore?.cpf;
+    const cpfCliente = cpfClienteRaw
+      ? String(cpfClienteRaw).replace(/\D/g, "")
+      : null;
 
     if (!cpfCliente || cpfCliente.length !== 11) {
-        Alert.alert(
-            "Erro de CPF", 
-            "Seu CPF não foi encontrado ou está inválido. Por favor, atualize seu perfil para adicionar um CPF válido (11 dígitos)."
-        );
-        console.error("CPF do cliente ausente ou inválido (não 11 dígitos numéricos). CPF recebido:", cpfClienteRaw);
-        setIsProcessingOrder(false);
-        return;
+      Alert.alert(
+        "Erro de CPF",
+        "Seu CPF não foi encontrado ou está inválido. Por favor, atualize seu perfil para adicionar um CPF válido (11 dígitos)."
+      );
+      console.error(
+        "CPF do cliente ausente ou inválido (não 11 dígitos numéricos). CPF recebido:",
+        cpfClienteRaw
+      );
+      setIsProcessingOrder(false);
+      return;
     }
     console.log("PagamentoScreen: CPF do cliente obtido e limpo:", cpfCliente);
 
-    const currentValidTimeOptions = getAvailableTimeOptions.map(option => option.value);
+    const currentValidTimeOptions = getAvailableTimeOptions.map(
+      (option) => option.value
+    );
     if (!horarioEntrega || !currentValidTimeOptions.includes(horarioEntrega)) {
-        Alert.alert("Erro", "Por favor, selecione um horário de entrega válido para a data escolhida.");
-        setIsProcessingOrder(false);
-        return;
+      Alert.alert(
+        "Erro",
+        "Por favor, selecione um horário de entrega válido para a data escolhida."
+      );
+      setIsProcessingOrder(false);
+      return;
     }
 
     setIsProcessingOrder(true);
@@ -286,71 +341,97 @@ const PagamentoScreen = ({ route }) => {
       await runTransaction(db, async (transaction) => {
         const productsToUpdate = [];
         for (const item of carrinho) {
-          const productIdToLookup = item.produtoId; 
+          const productIdToLookup = item.produtoId;
           const productRef = doc(db, "produtos", productIdToLookup);
-          
-          console.log(`Verificando produto para transação: ID do PRODUTO no carrinho=${productIdToLookup}, Nome=${item.nome}`); 
+
+          console.log(
+            `Verificando produto para transação: ID do PRODUTO no carrinho=${productIdToLookup}, Nome=${item.nome}`
+          );
           const productSnap = await transaction.get(productRef);
 
           if (!productSnap.exists()) {
-            throw new Error(`Produto com ID '${productIdToLookup}' (Nome: ${item.nome}) não encontrado no Firestore na coleção 'produtos'. Por favor, verifique os produtos no seu carrinho ou o banco de dados.`);
+            throw new Error(
+              `Produto com ID '${productIdToLookup}' (Nome: ${item.nome}) não encontrado no Firestore na coleção 'produtos'. Por favor, verifique os produtos no seu carrinho ou o banco de dados.`
+            );
           }
 
           const currentStock = productSnap.data().estoque || 0;
           const requestedQuantity = item.quantidade || 0;
 
           if (currentStock < requestedQuantity) {
-            throw new Error(`Estoque insuficiente para ${item.nome}. Disponível: ${currentStock}, Solicitado: ${requestedQuantity}`);
+            throw new Error(
+              `Estoque insuficiente para ${item.nome}. Disponível: ${currentStock}, Solicitado: ${requestedQuantity}`
+            );
           }
 
           const newStock = currentStock - requestedQuantity;
           transaction.update(productRef, { estoque: newStock });
-          productsToUpdate.push({ id: productIdToLookup, oldStock: currentStock, newStock: newStock });
-          console.log(`Estoque de ${item.nome} (ID do PRODUTO: ${productIdToLookup}) atualizado de ${currentStock} para ${newStock}.`);
+          productsToUpdate.push({
+            id: productIdToLookup,
+            oldStock: currentStock,
+            newStock: newStock,
+          });
+          console.log(
+            `Estoque de ${item.nome} (ID do PRODUTO: ${productIdToLookup}) atualizado de ${currentStock} para ${newStock}.`
+          );
         }
 
         const pedidoDocRef = collection(db, "pedidos");
         const newOrderRef = await addDoc(pedidoDocRef, {
           userId: currentUser.uid,
           fornecedores: fornecedoresUnicos,
-          carrinho: carrinho, 
+          carrinho: carrinho,
           subtotal: parseFloat(calcularSubtotal().toFixed(2)),
           frete: freteCalculado,
-          taxaServico: taxaServico, 
+          taxaServico: taxaServico,
           total: parseFloat(totalFinal),
           formaPagamento: metodoPagamento,
           horarioEntrega: horarioEntrega.toString().trim(),
-          dataEntrega: dataEntrega, 
-          status: "pending", 
-          criadoEm: serverTimestamp(), 
-          nomeCliente:
-            (currentUser.displayName || usuarioDataFromFirestore?.nome || "Cliente")?.toString().trim(),
+          dataEntrega: dataEntrega,
+          status: "pending",
+          criadoEm: serverTimestamp(),
+          nomeCliente: (
+            currentUser.displayName ||
+            usuarioDataFromFirestore?.nome ||
+            "Cliente"
+          )
+            ?.toString()
+            .trim(),
           emailCliente: currentUser.email?.toString().trim(),
           enderecoEntrega: enderecoCompleto.toString().trim(),
-          cpfCliente: cpfCliente.toString().trim(), 
-          estoque_antes_da_compra: productsToUpdate.map(p => ({ productId: p.id, oldStock: p.oldStock })),
+          cpfCliente: cpfCliente.toString().trim(),
+          estoque_antes_da_compra: productsToUpdate.map((p) => ({
+            productId: p.id,
+            oldStock: p.oldStock,
+          })),
         });
 
         const orderId = newOrderRef.id;
-        setCurrentOrderId(orderId); 
+        setCurrentOrderId(orderId);
         console.log("Pedido salvo no Firestore com ID:", orderId);
 
         const cleanedCarrinho = carrinho.map((item) => {
           const newItem = { ...item };
-          if (newItem.timestamp instanceof Object && "seconds" in newItem.timestamp) {
+          if (
+            newItem.timestamp instanceof Object &&
+            "seconds" in newItem.timestamp
+          ) {
             newItem.timestamp = newItem.timestamp.toDate().toISOString();
           } else if (newItem.timestamp === undefined) {
-            newItem.timestamp = null; 
+            newItem.timestamp = null;
           }
           newItem.nome = newItem.nome?.toString().trim();
           newItem.fornecedor = newItem.fornecedor?.toString().trim();
           newItem.nomeFornecedor = newItem.nomeFornecedor?.toString().trim();
-          newItem.produtoId = newItem.produtoId?.toString().trim() || null; 
-          newItem.id = newItem.id?.toString().trim(); 
+          newItem.produtoId = newItem.produtoId?.toString().trim() || null;
+          newItem.id = newItem.id?.toString().trim();
           return newItem;
         });
 
-        const callCriarPixHortifruti = httpsCallable(functions, "criarPixHortifruti");
+        const callCriarPixHortifruti = httpsCallable(
+          functions,
+          "criarPixHortifruti"
+        );
 
         const payloadParaCloudFunction = {
           idToken: idToken,
@@ -358,10 +439,16 @@ const PagamentoScreen = ({ route }) => {
           frete: freteCalculado,
           taxaServico: taxaServico,
           total: parseFloat(totalFinal),
-          nomeCliente:
-            (currentUser.displayName || currentUser.email || usuarioDataFromFirestore?.nome || "Cliente")?.toString().trim(),
-          external_reference: orderId.toString().trim(), 
-          cpfCliente: cpfCliente.toString().trim(), 
+          nomeCliente: (
+            currentUser.displayName ||
+            currentUser.email ||
+            usuarioDataFromFirestore?.nome ||
+            "Cliente"
+          )
+            ?.toString()
+            .trim(),
+          external_reference: orderId.toString().trim(),
+          cpfCliente: cpfCliente.toString().trim(),
         };
         console.log(
           "Payload enviado para a Cloud Function:",
@@ -373,7 +460,9 @@ const PagamentoScreen = ({ route }) => {
         const { qrCode, paymentId } = result.data;
 
         if (!qrCode || !paymentId) {
-          throw new Error("Não foi possível gerar o código PIX ou ID de pagamento. Tente novamente.");
+          throw new Error(
+            "Não foi possível gerar o código PIX ou ID de pagamento. Tente novamente."
+          );
         }
 
         console.log("PIX gerado. QR Code:", qrCode, "Payment ID:", paymentId);
@@ -381,14 +470,12 @@ const PagamentoScreen = ({ route }) => {
         await updateDoc(doc(db, "pedidos", orderId), {
           qrCodePix: qrCode.toString().trim(),
           paymentIdMercadoPago: paymentId.toString().trim(),
-          status: "pending_payment", 
+          status: "pending_payment",
         });
 
-        setPixCodeToDisplay(qrCode.toString().trim()); 
-        setShowPixModal(true); 
-
-      }); 
-
+        setPixCodeToDisplay(qrCode.toString().trim());
+        setShowPixModal(true);
+      });
     } catch (error) {
       console.error("Erro ao finalizar pedido (frontend):", error);
       let errorMessage =
@@ -436,7 +523,9 @@ const PagamentoScreen = ({ route }) => {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          <Text style={styles.summaryValue}>{enderecoCompleto?.toString().trim()}</Text>
+          <Text style={styles.summaryValue}>
+            {enderecoCompleto?.toString().trim()}
+          </Text>
 
           <View style={styles.fornecedorSection}>
             <Text style={styles.fornecedorName}>
@@ -452,14 +541,20 @@ const PagamentoScreen = ({ route }) => {
             <Text style={styles.produtosTitle}>Produtos</Text>
             {carrinho && carrinho.length > 0 ? (
               carrinho.map((item) => (
-                <View key={item.id?.toString().trim() || Math.random().toString()} style={styles.produtoRow}>
-                  <Text style={styles.produtoNome}>{item.nome?.toString().trim()}</Text>
+                <View
+                  key={item.id?.toString().trim() || Math.random().toString()}
+                  style={styles.produtoRow}
+                >
+                  <Text style={styles.produtoNome}>
+                    {item.nome?.toString().trim()}
+                  </Text>
                   <View style={styles.produtoInfo}>
                     <Text style={styles.produtoQuantidade}>
                       Qtd: {item.quantidade?.toString().trim()}
                     </Text>
                     <Text style={styles.produtoPreco}>
-                      R$ {((item.preco || 0) * (item.quantidade || 0)).toFixed(2)}
+                      R${" "}
+                      {((item.preco || 0) * (item.quantidade || 0)).toFixed(2)}
                     </Text>
                   </View>
                 </View>
@@ -473,9 +568,12 @@ const PagamentoScreen = ({ route }) => {
           {/* Seleção de Data de Entrega */}
           <View style={styles.deliveryDateSection}>
             <Text style={styles.deliveryTimeTitle}>Data para Entrega</Text>
-            <TouchableOpacity onPress={showDatepicker} style={styles.datePickerButton}>
+            <TouchableOpacity
+              onPress={showDatepicker}
+              style={styles.datePickerButton}
+            >
               <Text style={styles.datePickerButtonText}>
-                {dataEntrega.toLocaleDateString('pt-BR')}
+                {dataEntrega.toLocaleDateString("pt-BR")}
               </Text>
               <Icon name="calendar" size={24} color="#69A461" />
             </TouchableOpacity>
@@ -486,7 +584,7 @@ const PagamentoScreen = ({ route }) => {
                 mode="date"
                 display="default"
                 onChange={onChangeDate}
-                minimumDate={new Date()} 
+                minimumDate={new Date()}
               />
             )}
           </View>
@@ -494,9 +592,14 @@ const PagamentoScreen = ({ route }) => {
           {/* Seleção de Horário de Entrega (Customizada com Modal) */}
           <View style={styles.deliveryTimeSection}>
             <Text style={styles.deliveryTimeTitle}>Horário para Entrega</Text>
-            <TouchableOpacity onPress={() => setShowTimePickerModal(true)} style={styles.datePickerButton}>
+            <TouchableOpacity
+              onPress={() => setShowTimePickerModal(true)}
+              style={styles.datePickerButton}
+            >
               <Text style={styles.datePickerButtonText}>
-                {getAvailableTimeOptions.find(opt => opt.value === horarioEntrega)?.label || "Selecione o horário"}
+                {getAvailableTimeOptions.find(
+                  (opt) => opt.value === horarioEntrega
+                )?.label || "Selecione o horário"}
               </Text>
               <Icon name="clock-outline" size={24} color="#69A461" />
             </TouchableOpacity>
@@ -517,7 +620,9 @@ const PagamentoScreen = ({ route }) => {
                 color="#0F9D58"
                 style={{ marginRight: 6 }}
               />
-              <Text style={styles.paymentMethodName}>{metodoPagamento?.toString().trim()}</Text>
+              <Text style={styles.paymentMethodName}>
+                {metodoPagamento?.toString().trim()}
+              </Text>
               <TouchableOpacity
                 onPress={() => Alert.alert("Método de pagamento", "Em breve!")}
               >
@@ -542,7 +647,9 @@ const PagamentoScreen = ({ route }) => {
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Taxa de serviço</Text>
-              <Text style={styles.summaryValue}>R$ {taxaServico.toFixed(2)}</Text>
+              <Text style={styles.summaryValue}>
+                R$ {taxaServico.toFixed(2)}
+              </Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Total</Text>
@@ -579,8 +686,12 @@ const PagamentoScreen = ({ route }) => {
         >
           <View style={localStyles.centeredView}>
             <View style={localStyles.modalView}>
-              <Text style={localStyles.modalTitle}>Código PIX para Pagamento</Text>
-              <Text style={localStyles.pixCodeText}>{pixCodeToDisplay?.toString().trim()}</Text>
+              <Text style={localStyles.modalTitle}>
+                Código PIX para Pagamento
+              </Text>
+              <Text style={localStyles.pixCodeText}>
+                {pixCodeToDisplay?.toString().trim()}
+              </Text>
 
               <View style={localStyles.modalButtonContainer}>
                 <TouchableOpacity
@@ -593,7 +704,7 @@ const PagamentoScreen = ({ route }) => {
 
                 <TouchableOpacity
                   style={[localStyles.modalButton, localStyles.okButton]}
-                  onPress={handlePixOk} 
+                  onPress={handlePixOk}
                 >
                   <Text style={localStyles.modalButtonText}>OK</Text>
                 </TouchableOpacity>
@@ -611,29 +722,38 @@ const PagamentoScreen = ({ route }) => {
         >
           <View style={localStyles.centeredView}>
             <View style={localStyles.modalView}>
-              <Text style={localStyles.modalTitle}>Selecione o Horário de Entrega</Text>
+              <Text style={localStyles.modalTitle}>
+                Selecione o Horário de Entrega
+              </Text>
               {getAvailableTimeOptions.map((option) => (
                 <TouchableOpacity
                   key={option.value}
                   style={[
                     localStyles.timeOptionButton,
-                    horarioEntrega === option.value && localStyles.timeOptionButtonSelected
+                    horarioEntrega === option.value &&
+                      localStyles.timeOptionButtonSelected,
                   ]}
                   onPress={() => {
                     setHorarioEntrega(option.value);
                     setShowTimePickerModal(false);
                   }}
                 >
-                  <Text style={[
-                    localStyles.timeOptionButtonText,
-                    horarioEntrega === option.value && localStyles.timeOptionButtonTextSelected
-                  ]}>
+                  <Text
+                    style={[
+                      localStyles.timeOptionButtonText,
+                      horarioEntrega === option.value &&
+                        localStyles.timeOptionButtonTextSelected,
+                    ]}
+                  >
                     {option.label}
                   </Text>
                 </TouchableOpacity>
               ))}
               <TouchableOpacity
-                style={[localStyles.modalButton, { backgroundColor: '#FF3D59', marginTop: 20 }]}
+                style={[
+                  localStyles.modalButton,
+                  { backgroundColor: "#FF3D59", marginTop: 20 },
+                ]}
                 onPress={() => setShowTimePickerModal(false)}
               >
                 <Text style={localStyles.modalButtonText}>Fechar</Text>
@@ -706,45 +826,45 @@ const styles = StyleSheet.create({
   deliveryDateSection: {
     marginBottom: 20,
     padding: 15,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: "#f9f9f9",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
   },
   datePickerButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: 12,
     paddingHorizontal: 15,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     borderRadius: 8,
-    backgroundColor: '#fff',
-    marginBottom: 10, 
+    backgroundColor: "#fff",
+    marginBottom: 10,
   },
   datePickerButtonText: {
     fontSize: 16,
-    color: '#333',
+    color: "#333",
   },
 
   deliveryTimeSection: {
     marginBottom: 20,
     padding: 15,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: "#f9f9f9",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
   },
   deliveryTimeTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 10,
-    color: '#333',
+    color: "#333",
   },
   deliveryInfo: {
     fontSize: 13,
-    color: '#555',
+    color: "#555",
     lineHeight: 18,
     marginTop: 5,
   },
@@ -787,17 +907,17 @@ const styles = StyleSheet.create({
 const localStyles = StyleSheet.create({
   centeredView: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.7)",
   },
   modalView: {
     margin: 20,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 20,
     padding: 35,
-    alignItems: 'center',
-    shadowColor: '#000',
+    alignItems: "center",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -805,31 +925,31 @@ const localStyles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
-    width: '90%',
+    width: "90%",
     maxWidth: 400,
   },
   modalTitle: {
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 15,
-    color: '#333',
+    color: "#333",
   },
   pixCodeText: {
     fontSize: 18,
     marginBottom: 25,
-    textAlign: 'center',
-    color: '#555',
-    fontWeight: 'bold',
+    textAlign: "center",
+    color: "#555",
+    fontWeight: "bold",
     padding: 10,
-    backgroundColor: '#eee',
+    backgroundColor: "#eee",
     borderRadius: 5,
-    width: '100%',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo-Regular' : 'monospace',
+    width: "100%",
+    fontFamily: Platform.OS === "ios" ? "Menlo-Regular" : "monospace",
   },
   modalButtonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
     marginTop: 15,
   },
   modalButton: {
@@ -837,46 +957,46 @@ const localStyles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 15,
     elevation: 2,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     flex: 1,
     marginHorizontal: 5,
   },
   copyButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
   },
   okButton: {
-    backgroundColor: '#69A461',
+    backgroundColor: "#69A461",
   },
   modalButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    textAlign: 'center',
+    color: "white",
+    fontWeight: "bold",
+    textAlign: "center",
     marginLeft: 5,
     fontSize: 16,
   },
   timeOptionButton: {
-    width: '100%',
+    width: "100%",
     padding: 15,
     borderRadius: 10,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: "#f0f0f0",
     marginBottom: 10,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: "#e0e0e0",
   },
   timeOptionButtonSelected: {
-    backgroundColor: '#69A461',
-    borderColor: '#4a7d4a',
+    backgroundColor: "#69A461",
+    borderColor: "#4a7d4a",
   },
   timeOptionButtonText: {
     fontSize: 18,
-    color: '#333',
-    fontWeight: 'bold',
+    color: "#333",
+    fontWeight: "bold",
   },
   timeOptionButtonTextSelected: {
-    color: '#fff',
+    color: "#fff",
   },
 });
 

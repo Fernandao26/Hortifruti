@@ -290,14 +290,14 @@ export default function FornecedorScreen() {
       {
         name: "À Venda",
         population: produtosAtivos.length,
-        color: "green",
+        color: "#d3d3d3",
         legendFontColor: "#7F7F7F",
         legendFontSize: 15,
       },
       {
         name: "Vendidos",
         population: produtosVendidos.length,
-        color: "red",
+        color: "#69a461",
         legendFontColor: "#7F7F7F",
         legendFontSize: 15,
       },

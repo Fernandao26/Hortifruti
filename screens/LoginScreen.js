@@ -10,23 +10,31 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
+  ActivityIndicator, // Já adicionamos no último ajuste
+  Modal,
 } from "react-native";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../firebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { wp, hp } from "../src/utils/responsive";
+import LottieView from "lottie-react-native";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Para o spinner do botão
+  const [showWelcomeLottie, setShowWelcomeLottie] = useState(false); // <-- ADICIONE ESTE NOVO ESTADO
+  const [userTypeDestination, setUserTypeDestination] = useState(null); // <-- NOVO ESTADO PARA A DESTINAÇÃO APÓS LOTTIE
 
   const handleLogin = async () => {
     if (!email || !senha) {
       Alert.alert("Erro", "Preencha todos os campos");
       return;
     }
+
+    setIsLoading(true); // Ativa o spinner do botão
 
     try {
       const userCredential = await signInWithEmailAndPassword(
@@ -35,7 +43,7 @@ export default function LoginScreen({ navigation }) {
         senha
       );
       const user = userCredential.user;
-     
+
       const userDocRef = doc(db, "users", user.uid);
       const userDocSnap = await getDoc(userDocRef);
 
@@ -43,23 +51,32 @@ export default function LoginScreen({ navigation }) {
         const userData = userDocSnap.data();
         const tipo = userData.tipo;
 
+        let destinationScreen;
         switch (tipo) {
           case "admin":
-            navigation.replace("Admin");
+            destinationScreen = "Admin";
             break;
           case "fornecedor":
-            navigation.replace("Fornecedor");
+            destinationScreen = "Fornecedor";
             break;
           default:
-            navigation.replace("Home");
+            destinationScreen = "Home"; // Ou "Home" se não usar Tab Navigator
         }
+        setUserTypeDestination(destinationScreen); // Guarda a tela de destino
+
+        // Se o login for bem-sucedido, ativa a animação Lottie
+        setShowWelcomeLottie(true);
+
+        // Não navegamos aqui ainda! A navegação será feita após a Lottie terminar.
       } else {
-        Alert.alert("Erro", "Usuário não encontrado no banco de dados");
+        Alert.alert("Erro", "Usuário não encontrado no banco de dados.");
+        setIsLoading(false); // Desativa o spinner em caso de erro antes da Lottie
       }
     } catch (error) {
-      Alert.alert("Erro", "Email ou senha incorretos");
+      Alert.alert("Erro", "Email ou senha incorretos.");
       setEmail("");
       setSenha("");
+      setIsLoading(false); // Desativa o spinner em caso de erro
     }
   };
 
@@ -73,13 +90,15 @@ export default function LoginScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.container}>
+          {/* ... Todos os seus elementos existentes da LoginScreen (Imagens, Inputs, Botões, etc.) ... */}
+
           <Image
             source={require("../img/logo.png")}
             style={styles.topImage}
             resizeMode="contain"
           />
           <Image
-            source={require("../img/mascote.png")} // ajuste o caminho se necessário
+            source={require("../img/mascote.png")}
             style={styles.image}
             resizeMode="contain"
           />
@@ -131,11 +150,58 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.forgotPassword}>Esqueceu a senha ?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Entrar</Text>
+          <TouchableOpacity
+            style={styles.loginButton}
+            onPress={handleLogin}
+            disabled={isLoading || showWelcomeLottie} // <-- Desabilita também durante a Lottie
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.loginButtonText}>Entrar</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* NOVO: MODAL DA ANIMAÇÃO LOTTIE DE BOAS-VINDAS */}
+      <Modal
+        visible={showWelcomeLottie}
+        transparent={false}
+        animationType="slide" // Ou "slide"
+        onRequestClose={() => {
+          // Opcional: Se o usuário fechar o modal, navega mesmo assim
+          setShowWelcomeLottie(false);
+          setIsLoading(false); // Garante que o loading do botão pare
+          if (userTypeDestination) {
+            navigation.replace(userTypeDestination);
+          }
+        }}
+      >
+        <View style={styles.lottieOverlay}>
+          <LottieView
+            source={require("../assets/LoadingPerfil.json")} // <-- AJUSTE ESTE CAMINHO PARA O SEU ARQUIVO LOTTIE
+            autoPlay
+            loop={false} // A animação deve tocar apenas uma vez
+            onAnimationFinish={() => {
+              console.log("Animação Lottie de boas-vindas concluída.");
+              setShowWelcomeLottie(false); // Esconde o modal
+              setIsLoading(false); // Garante que o loading do botão pare
+
+              // AQUI É ONDE A NAVEGAÇÃO FINALMENTE ACONTECE
+              if (userTypeDestination) {
+                navigation.replace(userTypeDestination);
+              } else {
+                // Fallback caso userTypeDestination não seja definido (o que não deve acontecer com o try/catch)
+                navigation.replace("Home");
+              }
+            }}
+            style={styles.lottieAnimation}
+          />
+          {/* Opcional: Adicionar um texto abaixo da animação */}
+          <Text style={styles.welcomeText}>Bem-vindo ao Frutiway!</Text>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -233,5 +299,22 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  lottieOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.95)", // Fundo quase branco, semi-transparente
+  },
+  lottieAnimation: {
+    width: 300, // Ajuste conforme o tamanho da sua animação
+    height: 300,
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#69A461",
+    marginTop: 20,
+    textAlign: "center",
   },
 });
