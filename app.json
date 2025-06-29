@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "FrutiWay",
-    "slug": "FrutiWay",
+    "slug": "hortifruti-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -30,6 +30,7 @@
       "eas": {
         "projectId": "529b5d8d-51ce-472e-8803-59e1b4e25df1"
       }
-    }
+    },
+    "owner": "ferananddo"
   }
 }
