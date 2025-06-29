@@ -84,7 +84,7 @@ const PagamentoScreen = ({ route }) => {
       0
     );
 
-  const taxaServico = calcularSubtotal() * 0.02;
+  const taxaServico = calcularSubtotal() * 0.05;
   const freteCalculado = typeof frete === "number" ? frete : 7;
   const totalFinal = (
     calcularSubtotal() +

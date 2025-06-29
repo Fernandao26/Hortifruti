@@ -205,7 +205,7 @@ export default function CarrinhoScreen() {
     carrinho.reduce((sum, item) => sum + (item.preco || 0) * (item.quantidade || 0), 0);
 
   const totalProdutos = calcularTotalCarrinho();
-  const taxaApp = totalProdutos * 0.02; 
+  const taxaApp = totalProdutos * 0.05; 
   const totalComFrete = (totalProdutos + taxaApp + (freteCalculado || 0)).toFixed(2);
 
   const alterarQuantidade = (id, op) => {
@@ -580,9 +580,9 @@ export default function CarrinhoScreen() {
           {/* Taxa */}
           <View style={styles.resumoLinha}>
             <TouchableOpacity
-              onPress={() => Alert.alert("Taxa de Serviço", "Taxa de 2% cobrada pela plataforma")}
+              onPress={() => Alert.alert("Taxa de Serviço", "Taxa de 5% cobrada pela plataforma")}
             >
-              <Text style={styles.resumoLabel}>Taxa de Serviço (2%) ⓘ</Text>
+              <Text style={styles.resumoLabel}>Taxa de Serviço (5%) ⓘ</Text>
             </TouchableOpacity>
             {/* Garante que taxaApp é um número antes de toFixed */}
             <Text style={styles.resumoValor}>R$ {(Number(taxaApp) || 0).toFixed(2)}</Text>
