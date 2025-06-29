@@ -37,6 +37,7 @@ import { Picker } from "@react-native-picker/picker";
 import { wp, hp } from "../src/utils/responsive";
 // Importe useSafeAreaInsets da nova biblioteca
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import VendasScreen from "./VendasScreen";
 
 // Altura padrão do seu menu inferior (ajuste conforme o design final)
 const MENU_INFERIOR_HEIGHT = hp("6%"); // Aproximadamente 8% da altura da tela
@@ -461,31 +462,30 @@ export default function FornecedorScreen() {
               ListEmptyComponent={
                 <Text style={styles.emptyText}>Nenhum produto encontrado.</Text>
               }
-              contentContainerStyle={{
-                paddingBottom: MENU_INFERIOR_HEIGHT + insets.bottom + hp("10%"), // Espaço dinâmico para menu inferior
-                paddingTop: hp("1.5%"), // Espaço acima da lista
-              }}
             />
           )}
         </View>
       )}
 
-      {telaAtual === "vendas" && (
-        <FlatList
-          data={aplicarFiltrosEOrdenacao(produtosVendidos)}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
+      {telaAtual === "Vendas" && (
+        <VendasScreen
+          // <FlatList
+          //   data={aplicarFiltr
+          // osEOrdenacao(produtosVendidos)}
+          //   keyExtractor={(item) => item.id}
+          //   numColumns={2}
           contentContainerStyle={{
             padding: wp("4%"),
             paddingBottom: MENU_INFERIOR_HEIGHT + insets.bottom + hp("2%"), // Espaço dinâmico para menu inferior
             paddingTop: hp("2%"),
           }}
-          columnWrapperStyle={{ justifyContent: "space-between" }}
-          renderItem={renderCard}
-          ListEmptyComponent={
-            <Text style={styles.semProdutos}>Nenhum produto vendido.</Text>
-          }
         />
+        //   columnWrapperStyle={{ justifyContent: "space-between" }}
+        //   renderItem={renderCard}
+        //   ListEmptyComponent={
+        //     <Text style={styles.semProdutos}>Nenhum produto vendido.</Text>
+        //   }
+        // />
       )}
 
       {telaAtual === "cadastro" && (
@@ -632,13 +632,13 @@ export default function FornecedorScreen() {
             source={require("../img/Vendas.png")}
             style={[
               styles.menuIcon,
-              telaAtual === "vendidos" && styles.menuIconActive,
+              telaAtual === "Vendas" && styles.menuIconActive,
             ]}
           />
           <Text
             style={[
               styles.menuItemText,
-              telaAtual === "vendidos" && styles.menuTextActive,
+              telaAtual === "Vendas" && styles.menuTextActive,
             ]}
           >
             Vendas

@@ -30,9 +30,22 @@ import { Ionicons } from "@expo/vector-icons";
 import { wp, hp } from "../src/utils/responsive";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Lottie from "lottie-react-native";
+
+// *******************************************************************
+// IMPORTANTE: Importe o componente LoadingScreenWithLottie que você criou
+// CRIE ESTE ARQUIVO SEPARADAMENTE em 'components/LoadingScreenWithLottie.js'
+import LoadingScreenWithLottie from "../components/LoadingScreenWithLottie.js"; // <-- AJUSTE O CAMINHO SE NECESSÁRIO
+// *******************************************************************
+
 const MENU_INFERIOR_HEIGHT = hp("6%");
 
 export default function HomeScreen() {
+  // Estado para controlar a exibição da animação de boas-vindas
+  const [showWelcomeAnimation, setShowWelcomeAnimation] = useState(true);
+  // Estado para controlar se os dados já foram carregados
+  const [dataLoaded, setDataLoaded] = useState(false); // NOVO ESTADO
+
   const [produtos, setProdutos] = useState([]);
   const [categoriaSelecionada, setCategoriaSelecionada] = useState("");
   const [fornecedorSelecionado, setFornecedorSelecionado] = useState("");
@@ -40,92 +53,74 @@ export default function HomeScreen() {
   const [carrinho, setCarrinho] = useState({});
   const [fornecedores, setFornecedores] = useState({});
   const navigation = useNavigation();
+  const route = useRoute();
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
+
+  // *******************************************************************
+  // NOVO useEffect para carregar TODOS OS DADOS APÓS A ANIMAÇÃO
   useEffect(() => {
-    const fetchDados = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "produtos"));
-        const produtosData = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setProdutos(produtosData);
+    // Só inicia a busca de dados se a animação terminou E os dados ainda não foram carregados
+    if (!showWelcomeAnimation && !dataLoaded) {
+      const fetchDados = async () => {
+        try {
+          // --- Buscar Produtos ---
+          const querySnapshot = await getDocs(collection(db, "produtos"));
+          const produtosData = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setProdutos(produtosData);
 
-        // Buscar fornecedores
-        const fornecedoresSnapshot = await getDocs(
-          collection(db, "fornecedores")
-        );
-        const dadosFornecedores = {};
-        fornecedoresSnapshot.forEach((doc) => {
-          const data = doc.data();
-          dadosFornecedores[data.email] = data.empresa;
-        });
-        setFornecedores(dadosFornecedores);
-        // Carregar carrinho do Firebase
-        // Carregar carrinho do usuário atual
-        // Carregar carrinho do usuário atual
-        const carregarCarrinho = async () => {
-          try {
-            const uid = auth.currentUser?.uid;
-            if (!uid) return;
+          // Inicializar quantidades (após carregar produtos)
+          const quantidadesIniciais = {};
+          produtosData.forEach((p) => {
+            quantidadesIniciais[p.id] = 1;
+          });
+          setQuantidades(quantidadesIniciais);
 
+          // --- Buscar Fornecedores ---
+          const fornecedoresSnapshot = await getDocs(
+            collection(db, "fornecedores")
+          );
+          const dadosFornecedores = {};
+          fornecedoresSnapshot.forEach((doc) => {
+            const data = doc.data();
+            dadosFornecedores[data.email] = data.empresa;
+          });
+          setFornecedores(dadosFornecedores);
+
+          // --- Carregar Carrinho do usuário atual ---
+          const uid = auth.currentUser?.uid;
+          if (uid) {
             const q = query(
               collection(db, "carrinho"),
               where("uid", "==", uid)
             );
             const snapshot = await getDocs(q);
 
-            const lista = snapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-            }));
-
             const carrinhoMap = {};
-            lista.forEach((item) => {
-              carrinhoMap[item.produtoId] = item;
+            snapshot.docs.forEach((doc) => {
+              const itemData = { id: doc.id, ...doc.data() };
+              carrinhoMap[itemData.produtoId] = itemData;
             });
-
             setCarrinho(carrinhoMap);
-          } catch (error) {
-            console.error("Erro ao carregar carrinho:", error);
           }
-        };
 
-        // Inicializar quantidades
-        const quantidadesIniciais = {};
-        produtosData.forEach((p) => {
-          quantidadesIniciais[p.id] = 1;
-        });
-        setQuantidades(quantidadesIniciais);
-      } catch (error) {
-        console.error("Erro ao buscar dados:", error);
-      }
-    };
+          // Marca que todos os dados foram carregados
+          setDataLoaded(true);
+        } catch (error) {
+          console.error("Erro ao buscar dados na HomeScreen:", error);
+          // Você pode adicionar um Alert.alert para o usuário aqui se quiser
+        }
+      };
 
-    fetchDados();
-  }, []);
+      fetchDados();
+    }
+  }, [showWelcomeAnimation, dataLoaded]); // Dependências: showWelcomeAnimation e dataLoaded
+  // *******************************************************************
 
-  useEffect(() => {
-    const fetchProdutos = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "produtos"));
-        const produtosData = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setProdutos(produtosData);
-        const quantidadesIniciais = {};
-        produtosData.forEach((p) => {
-          quantidadesIniciais[p.id] = 1;
-        });
-        setQuantidades(quantidadesIniciais);
-      } catch (error) {
-        console.error("Erro ao buscar produtos:", error);
-      }
-    };
-    fetchProdutos();
-  }, []);
+  // Removido o useEffect duplicado para fetchProdutos, pois ele foi integrado no useEffect acima
 
   const produtosFiltrados = produtos.filter((p) => {
     const categoriaOk = categoriaSelecionada
@@ -151,7 +146,7 @@ export default function HomeScreen() {
     const qtd = quantidades[id] || 0;
 
     if (!produto || qtd <= 0) {
-      alert("Escolha uma quantidade válida");
+      Alert.alert("Escolha uma quantidade válida"); // Use Alert.alert para melhor UX
       return;
     }
 
@@ -164,7 +159,7 @@ export default function HomeScreen() {
         preco: Number(produto.preco),
         quantidade: qtd,
         timestamp: new Date(),
-        fornecedor: fornecedores[produto.fornecedor], // ✅ Vamos corrigir isso abaixo
+        fornecedor: fornecedores[produto.fornecedor],
       });
 
       setCarrinho((prev) => ({
@@ -181,10 +176,10 @@ export default function HomeScreen() {
       Alert.alert("Produto adicionado ao carrinho");
     } catch (error) {
       console.error("Erro ao adicionar ao carrinho:", error);
-      alert("Erro ao adicionar ao carrinho");
+      Alert.alert("Erro ao adicionar ao carrinho");
     }
   };
-  // Substitua dentro do renderItem
+
   const renderItem = ({ item }) => {
     const qtd = Math.max(1, quantidades[item.id] ?? 1); // Garante quantidade mínima de 1
     const precoValido = item.preco ? Number(item.preco) : 0;
@@ -228,8 +223,10 @@ export default function HomeScreen() {
                   if (qtd < estoque) {
                     atualizarQuantidade(item.id, 1);
                   } else {
-                    alert(
-                      `Limite de estoque atingido (${estoque} ${item.tipoPreco})`
+                    Alert.alert(
+                      // Usando Alert.alert para melhor UX
+                      "Limite de estoque atingido",
+                      `Você atingiu o limite de estoque para este produto (${estoque} ${item.tipoPreco || "Unid"}).`
                     );
                   }
                 }}
@@ -273,236 +270,275 @@ export default function HomeScreen() {
   };
 
   const fornecedoresUnicos = [...new Set(produtos.map((p) => p.fornecedor))];
+  // Console.log que estava solto, movido para dentro de uma função se for para depurar
+  // console.log("Imagem:", item.imagem); // Isso precisa estar dentro de renderItem ou um loop
 
   return (
-    <View
-      style={{
-        flex: 1,
-        paddingTop: hp("3%"),
-        paddingHorizontal: wp("5%"),
-        backgroundColor: "#fff",
-      }}
-    >
-      <View style={styles.header}>
-        <Image
-          source={require("../img/logo.png")} // seu logo
-          style={styles.logo}
-          resizeMode="contain"
+    // *******************************************************************
+    // LÓGICA DE RENDERIZAÇÃO CONDICIONAL DA ANIMAÇÃO OU CONTEÚDO PRINCIPAL
+    <>
+      {showWelcomeAnimation ? (
+        // Se showWelcomeAnimation for true, mostre a animação de boas-vindas
+        <LoadingScreenWithLottie
+          onAnimationFinish={() => setShowWelcomeAnimation(false)}
         />
-        <View style={styles.iconRow}>
-          <TouchableOpacity onPress={() => navigation.navigate("Pedidos")}>
+      ) : (
+        // Se showWelcomeAnimation for false, mostre o conteúdo normal da HomeScreen
+        <View
+          style={{
+            flex: 1,
+            paddingTop: hp("3%"),
+            paddingHorizontal: wp("5%"),
+            backgroundColor: "#fff",
+          }}
+        >
+          <View style={styles.header}>
             <Image
-              source={require("../img/pedido.png")} // Caminho para sua imagem local
-              style={{ width: 28, height: 28 }}
+              source={require("../img/logo.png")} // seu logo
+              style={styles.logo}
               resizeMode="contain"
             />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.iconRow}>
-          <TouchableOpacity onPress={() => navigation.navigate("Perfil")}>
-            <Image
-              source={require("../img/profilehome.png")} // Caminho para sua imagem local
-              style={{ width: 28, height: 28 }}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => {
-              navigation.navigate("Carrinho", {
-                carrinho: Object.values(carrinho),
-              });
-            }}
+
+            <View style={styles.iconRow}>
+              <TouchableOpacity onPress={() => navigation.navigate("Perfil")}>
+                <Image
+                  source={require("../img/profilehome.png")} // Caminho para sua imagem local
+                  style={{ width: 28, height: 28 }}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  navigation.navigate("Carrinho", {
+                    carrinho: Object.values(carrinho),
+                  });
+                }}
+              >
+                <Image
+                  source={require("../img/Cart.png")} // Caminho para sua imagem local
+                  style={{ width: 28, height: 28 }}
+                  resizeMode="contain"
+                />
+                {Object.keys(carrinho).length > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {Object.keys(carrinho).length}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <Text style={styles.tituloFiltro}>Filtrar por categoria</Text>
+          <View style={styles.filtroWrapper}>
+            <TouchableOpacity
+              onPress={() => setCategoriaSelecionada("")}
+              style={[
+                styles.filtroItem,
+                categoriaSelecionada === "" && styles.filtroItemAtivo,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filtroTexto,
+                  categoriaSelecionada === "" && styles.filtroTextoAtivo,
+                ]}
+              >
+                Todos
+              </Text>
+            </TouchableOpacity>
+
+            {["Frutas", "Legumes", "Verduras"].map((categoria) => {
+              const ativa = categoriaSelecionada === categoria;
+              return (
+                <TouchableOpacity
+                  key={categoria}
+                  onPress={() => setCategoriaSelecionada(categoria)}
+                  style={[styles.filtroItem, ativa && styles.filtroItemAtivo]}
+                >
+                  <Text
+                    style={[
+                      styles.filtroTexto,
+                      ativa && styles.filtroTextoAtivo,
+                    ]}
+                  >
+                    {categoria}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <Text style={styles.tituloFiltro}>Filtrar por Fornecedor</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtroWrapper}
+            style={{ marginBottom: hp("1%"), height: hp("11%") }}
           >
-            <Image
-              source={require("../img/Cart.png")} // Caminho para sua imagem local
-              style={{ width: 28, height: 28 }}
-              resizeMode="contain"
-            />
-            {Object.keys(carrinho).length > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>
-                  {Object.keys(carrinho).length}
+            <TouchableOpacity
+              onPress={() => setFornecedorSelecionado("")}
+              style={[
+                styles.filtroItem,
+                fornecedorSelecionado === "" && styles.filtroItemAtivo,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filtroTexto,
+                  fornecedorSelecionado === "" && styles.filtroTextoAtivo,
+                ]}
+              >
+                Todos
+              </Text>
+            </TouchableOpacity>
+
+            {fornecedoresUnicos.map((email, i) => {
+              const ativo = fornecedorSelecionado === email;
+              const nomeEmpresa =
+                fornecedores[email] || "Fornecedor desconhecido";
+              return (
+                <TouchableOpacity
+                  key={i}
+                  onPress={() => setFornecedorSelecionado(email)}
+                  style={[styles.filtroItem, ativo && styles.filtroItemAtivo]}
+                >
+                  <Text
+                    style={[
+                      styles.filtroTexto,
+                      ativo && styles.filtroTextoAtivo,
+                    ]}
+                  >
+                    {nomeEmpresa}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* Adicione um ListEmptyComponent para quando os dados estiverem carregando ou não houver produtos */}
+          <FlatList
+            data={produtosFiltrados}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            scrollEnabled={true}
+            ListEmptyComponent={
+              !dataLoaded ? (
+                <Text style={styles.emptyMessage}>Carregando produtos...</Text>
+              ) : produtosFiltrados.length === 0 ? (
+                <Text style={styles.emptyMessage}>
+                  Nenhum produto encontrado com os filtros aplicados.
                 </Text>
-              </View>
-            )}
-          </TouchableOpacity>
+              ) : null
+            }
+          />
+
+          {/* Menu inferior */}
+          <View style={styles.menuInferior}>
+            <TouchableOpacity
+              onPress={() => {
+                // <-- INÍCIO DA MUDANÇA AQUI
+                if (route.name !== "Home") {
+                  // Verifica se a tela atual NÃO é 'HomeScreen'
+                  navigation.navigate("Home"); // Só navega se não for a HomeScreen
+                }
+              }} // <-- FIM DA MUDANÇA AQUI
+            >
+              <Image
+                source={require("../img/Home.png")} // Caminho para sua imagem local
+                style={{ width: 24, height: 28 }}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+            <View style={styles.iconRow}>
+              <TouchableOpacity onPress={() => navigation.navigate("Pedidos")}>
+                <Image
+                  source={require("../img/bolsa-de-compras.png")} // Caminho para sua imagem local
+                  style={{ width: 28, height: 28 }}
+                  resizeMode="contain"
+                  tintColor={"#69a461"}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity onPress={() => navigation.navigate("Receitas")}>
+              <Image
+                source={require("../img/receitas.png")} // Caminho para sua imagem local
+                style={{ width: 28, height: 28 }}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => navigation.navigate("Dicas")}>
+              <Image
+                source={require("../img/idea.png")} // Caminho para sua imagem local
+                style={{ width: 28, height: 28 }}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-
-      <Text style={styles.tituloFiltro}>Filtrar por categoria</Text>
-      <View style={styles.filtroWrapper}>
-        <TouchableOpacity
-          onPress={() => setCategoriaSelecionada("")}
-          style={[
-            styles.filtroItem,
-            categoriaSelecionada === "" && styles.filtroItemAtivo,
-          ]}
-        >
-          <Text
-            style={[
-              styles.filtroTexto,
-              categoriaSelecionada === "" && styles.filtroTextoAtivo,
-            ]}
-          >
-            Todos
-          </Text>
-        </TouchableOpacity>
-
-        {["Frutas", "Legumes", "Verduras"].map((categoria) => {
-          const ativa = categoriaSelecionada === categoria;
-          return (
-            <TouchableOpacity
-              key={categoria}
-              onPress={() => setCategoriaSelecionada(categoria)}
-              style={[styles.filtroItem, ativa && styles.filtroItemAtivo]}
-            >
-              <Text
-                style={[styles.filtroTexto, ativa && styles.filtroTextoAtivo]}
-              >
-                {categoria}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-      <Text style={styles.tituloFiltro}>Filtrar por Fornecedor</Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filtroWrapper}
-        style={{ marginBottom: hp("1%"), height: hp("11%") }}
-      >
-        <TouchableOpacity
-          onPress={() => setFornecedorSelecionado("")}
-          style={[
-            styles.filtroItem,
-            fornecedorSelecionado === "" && styles.filtroItemAtivo,
-          ]}
-        >
-          <Text
-            style={[
-              styles.filtroTexto,
-              fornecedorSelecionado === "" && styles.filtroTextoAtivo,
-            ]}
-          >
-            Todos
-          </Text>
-        </TouchableOpacity>
-
-        {fornecedoresUnicos.map((email, i) => {
-          const ativo = fornecedorSelecionado === email;
-          const nomeEmpresa = fornecedores[email] || "Fornecedor desconhecido";
-          return (
-            <TouchableOpacity
-              key={i}
-              onPress={() => setFornecedorSelecionado(email)}
-              style={[styles.filtroItem, ativo && styles.filtroItemAtivo]}
-            >
-              <Text
-                style={[styles.filtroTexto, ativo && styles.filtroTextoAtivo]}
-              >
-                {nomeEmpresa}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      <FlatList
-        data={produtos.filter((p) => {
-          const categoriaOk = categoriaSelecionada
-            ? p.categoria === categoriaSelecionada
-            : true;
-          const fornecedorOk = fornecedorSelecionado
-            ? p.fornecedor === fornecedorSelecionado
-            : true;
-          return categoriaOk && fornecedorOk;
-        })}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        scrollEnabled={true}
-      />
-
-      {/* Menu inferior */}
-      <View style={styles.menuInferior}>
-        <TouchableOpacity onPress={() => navigation.navigate("Perfil")}>
-          <Image
-            source={require("../img/profilehomedown.png")} // Caminho para sua imagem local
-            style={{ width: 28, height: 28 }}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate("Receitas")}>
-          <Image
-            source={require("../img/receitas.png")} // Caminho para sua imagem local
-            style={{ width: 28, height: 28 }}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate("Dicas")}>
-          <Image
-            source={require("../img/idea.png")} // Caminho para sua imagem local
-            style={{ width: 28, height: 28 }}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-      </View>
-    </View>
+      )}
+    </>
+    // *******************************************************************
   );
-  console.log("Imagem:", item.imagem);
 }
 
 const styles = StyleSheet.create({
+  // *** NOVOS ESTILOS PARA A ANIMAÇÃO (se você não usar o LoadingScreenWithLottie.js) ***
+  // Caso você decida usar a Lottie diretamente aqui (o que eu não recomendo para organização)
+  // animationContainer: {
+  //   flex: 1,
+  //   justifyContent: 'center',
+  //   alignItems: 'center',
+  //   backgroundColor: '#69A461', // Fundo verde para a animação
+  // },
+  // animation: {
+  //   width: '100%',
+  //   height: '100%',
+  // },
+  // *******************************************************************
+
   lista: {
     padding: hp("2%"),
   },
   itemContainer: {
     flexDirection: "row",
-    paddingVertical: hp(1.7), // um pouco mais de espaço
+    paddingVertical: hp(1.7),
     paddingHorizontal: wp(1.5),
     borderBottomWidth: 1,
     borderColor: "#ddd",
     backgroundColor: "#fff",
-    // centraliza a imagem com o conteúdo
   },
   imagemHorizontal: {
     width: wp(22),
     height: wp(22),
-
     marginRight: wp(3),
   },
-
   infoContainer: {
     flex: 1,
     justifyContent: "space-between",
   },
-
   quantidadePrecoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: hp(1),
   },
-
   quantidadeContainer: {
     flexDirection: "row",
     alignItems: "center",
   },
-
   qtdTexto: {
     marginHorizontal: wp(2),
     fontSize: hp(1.6),
     fontWeight: "bold",
   },
-
   preco: {
     fontSize: hp(1.8),
     fontWeight: "bold",
     color: "#222",
   },
-
   total: {
     fontSize: hp(1.8),
     fontWeight: "bold",
@@ -510,23 +546,19 @@ const styles = StyleSheet.create({
     marginTop: hp(0.5),
     alignSelf: "flex-end",
   },
-
   nome: {
     fontSize: hp(2),
     fontWeight: "bold",
   },
-
   fornecedor: {
     fontSize: hp(1.5),
     color: "#666",
   },
-
   estoque: {
     fontSize: hp(1.5),
     color: "#666",
     marginBottom: hp(0.3),
   },
-
   botaoCarrinho: {
     backgroundColor: "green",
     padding: 8,
@@ -537,7 +569,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "bold",
   },
-
   menuInferior: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -546,7 +577,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderColor: "#ccc",
-    marginBottom: hp("5%"),
+    marginBottom: hp("5%"), // Ajuste se for fixo na parte inferior da tela
   },
   acaoRow: {
     flexDirection: "row",
@@ -554,7 +585,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: hp(1),
   },
-
   botaoaddCarrinho: {
     backgroundColor: "#007bff",
     paddingVertical: hp(0.6),
@@ -580,19 +610,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "bold",
   },
-
-  botaoTexto: {
-    color: "#fff",
-    fontSize: hp(1.7),
-    fontWeight: "bold",
-    textAlign: "center",
-  },
   menuTexto: {
     fontSize: 12,
     textAlign: "center",
     color: "#333",
   },
-
   header: {
     flexDirection: "row",
     paddingTop: wp("6%"),
@@ -619,19 +641,15 @@ const styles = StyleSheet.create({
     marginTop: hp(1),
     color: "#333",
   },
-
   filtroWrapper: {
     flexDirection: "row",
     gap: wp(1),
     paddingHorizontal: wp(3),
     paddingVertical: hp(1),
-    minHeight: hp("5%"), // garante altura mínima
+    minHeight: hp("5%"),
     alignItems: "flex-start",
     alignContent: "center",
-
-    // não centraliza verticalmente
   },
-
   filtroItem: {
     borderWidth: 1,
     borderColor: "#ccc",
@@ -641,19 +659,23 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     margin: wp(0.4),
   },
-
   filtroItemAtivo: {
     backgroundColor: "#69a461",
   },
-
   filtroTexto: {
     fontSize: hp(1.5),
     color: "#333",
     textAlign: "center",
   },
-
   filtroTextoAtivo: {
     color: "#fff",
     fontWeight: "bold",
+  },
+  emptyMessage: {
+    // Estilo para a mensagem de lista vazia/carregando
+    textAlign: "center",
+    marginTop: hp(5),
+    fontSize: hp(1.8),
+    color: "#888",
   },
 });

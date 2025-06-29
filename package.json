@@ -25,6 +25,7 @@
     "expo-media-library": "~17.1.7",
     "expo-status-bar": "~2.2.3",
     "firebase": "^10.0.0",
+    "lottie-react-native": "^7.2.3",
     "react": "19.0.0",
     "react-native": "0.79.4",
     "react-native-chart-kit": "^6.12.0",
