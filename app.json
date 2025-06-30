@@ -17,11 +17,11 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.hortifrutiapp"
+      "package": "com.ferananddo.hortifruti"
     },
     "web": {
       "favicon": "./assets/favicon.png"
