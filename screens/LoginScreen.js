@@ -266,6 +266,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 15,
     marginBottom: 15,
+    color: "black",
   },
   passwordContainer: {
     flexDirection: "row",
@@ -280,6 +281,7 @@ const styles = StyleSheet.create({
   },
   passwordInput: {
     flex: 1,
+    color: "black",
   },
   forgotPassword: {
     color: "#69A461",

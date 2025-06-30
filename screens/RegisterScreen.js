@@ -24,6 +24,7 @@ import { TextInput as RPTextInput } from "react-native-paper";
 export default function RegisterScreen({ navigation }) {
   const [nome, setNome] = useState("");
   const [sobrenome, setSobrenome] = useState("");
+  const [cpf, setCpf] = useState("");
   const [telefone, setTelefone] = useState("");
   const [cep, setCep] = useState("");
   const [endereco, setEndereco] = useState("");
@@ -72,6 +73,7 @@ export default function RegisterScreen({ navigation }) {
     if (
       !nome ||
       !sobrenome ||
+      !cpf ||
       !telefone ||
       !cep ||
       !endereco ||
@@ -108,6 +110,7 @@ export default function RegisterScreen({ navigation }) {
       const userData = {
         nome,
         sobrenome,
+        cpf,
         telefone,
         cep,
         endereco,
@@ -129,6 +132,7 @@ export default function RegisterScreen({ navigation }) {
           uid,
           nome,
           sobrenome,
+          cpf,
           telefone,
           cep,
           endereco,
@@ -194,6 +198,14 @@ export default function RegisterScreen({ navigation }) {
               label="Sobrenome"
               value={sobrenome}
               onChangeText={setSobrenome}
+              mode="outlined"
+              style={{ marginBottom: 10 }}
+            />
+            <RPTextInput
+              label="CPF"
+              value={cpf}
+              onChangeText={setCpf}
+              keyboardType="phone-pad"
               mode="outlined"
               style={{ marginBottom: 10 }}
             />
@@ -389,6 +401,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: "#fafafa",
     marginTop: 5,
+    color: "black",
   },
   pickerContainer: {
     borderWidth: 1,
@@ -397,10 +410,12 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     overflow: "hidden",
     backgroundColor: "#fafafa",
+    color: "black",
   },
   picker: {
     height: 50,
     width: "100%",
+    color: "black",
   },
   label: {
     fontWeight: "600",
@@ -426,9 +441,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#fafafa",
     marginBottom: 12,
     marginTop: 5,
+    color: "black",
   },
   passwordInput: {
     flex: 1,
+    color: "black",
   },
   button: {
     backgroundColor: "#69A461",
