@@ -3,7 +3,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Provider as PaperProvider, DefaultTheme } from "react-native-paper";
-
+import * as Updates from "expo-updates";
 import SplashScreen from "./screens/SplashScreen";
 import LoginScreen from "./screens/LoginScreen";
 import RegisterScreen from "./screens/RegisterScreen";
@@ -30,6 +30,22 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    
+    async function checkForUpdates() {
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync(); 
+        }
+      } catch (error) {
+        console.log("Erro ao verificar atualizações OTA:", error);
+      }
+    }
+
+    checkForUpdates(); 
+
+   
     const timer = setTimeout(() => setLoading(false), 3000);
     return () => clearTimeout(timer);
   }, []);
@@ -40,12 +56,13 @@ export default function App() {
     ...DefaultTheme,
     colors: {
       ...DefaultTheme.colors,
-      primary: "#69A461", // cor principal dos inputs e botões
-      placeholder: "#999999", // cor do placeholder
+      primary: "#69A461",
+      placeholder: "#999999",
       background: "white",
       text: "#69A461",
     },
   };
+
 
   return (
     <SafeAreaProvider>
