@@ -14,11 +14,12 @@
     },
     "updates": {
       "enabled": true,
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/529b5d8d-51ce-472e-8803-59e1b4e25df1"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ferananddo.frutiway"  
+      "bundleIdentifier": "com.ferananddo.frutiway"
     },
     "android": {
       "adaptiveIcon": {
@@ -36,6 +37,9 @@
         "projectId": "529b5d8d-51ce-472e-8803-59e1b4e25df1"
       }
     },
-    "owner": "ferananddo"
+    "owner": "ferananddo",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
   }
 }

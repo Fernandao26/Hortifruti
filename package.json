@@ -39,7 +39,8 @@
     "react-native-screens": "~4.11.1",
     "react-native-svg": "15.11.2",
     "react-native-vector-icons": "^10.2.0",
-    "react-responsive-grid": "^0.3.4"
+    "react-responsive-grid": "^0.3.4",
+    "expo-updates": "~0.28.16"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
