@@ -1,4 +1,3 @@
-// screens/VendasScreen.js
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -10,7 +9,7 @@ import {
   Image,
   Alert,
 } from "react-native";
-import { collection, query, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, getDoc } from "firebase/firestore";
 import { db, auth } from "../firebaseConfig";
 import { useNavigation } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,10 +19,18 @@ const VendasScreen = () => {
   const [vendasAprovadas, setVendasAprovadas] = useState([]);
   const [vendasPendentes, setVendasPendentes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [currentTab, setCurrentTab] = useState("aprovadas"); // 'aprovadas' ou 'pendentes'
+  const [currentTab, setCurrentTab] = useState("aprovadas"); 
   const navigation = useNavigation();
   const [currentFornecedorId, setCurrentFornecedorId] = useState(null);
-
+  const isApproved = (status) =>
+    ["approved", "aprovado", "success", "sucesso"].includes(
+      status?.toLowerCase()
+    );
+  
+  const isPending = (status) =>
+    ["pending", "pendente", "pending_payment"].includes(
+      status?.toLowerCase()
+    );
   useEffect(() => {
     const unsubscribeAuth = auth.onAuthStateChanged((user) => {
       if (user) {
@@ -39,7 +46,6 @@ const VendasScreen = () => {
         navigation.navigate("Login");
       }
     });
-
     return () => unsubscribeAuth();
   }, []);
 
@@ -48,83 +54,96 @@ const VendasScreen = () => {
       setLoading(false);
       return;
     }
-
-    // Consulta TODOS os pedidos (sem filtro de status aqui, filtramos no cliente)
-    const q = query(collection(db, "pedidos"));
-
+  
+    console.log("Buscando vendas para currentFornecedorId:", currentFornecedorId); 
+  
+    const q = query(
+      collection(db, "pedidos"),
+      where("status", "in", ["approved", "pending"])
+    );
+  
     const unsubscribeFirestore = onSnapshot(
       q,
       async (snapshot) => {
         const aprovadasTemp = [];
         const pendentesTemp = [];
         const productPromises = [];
-
+  
+        console.log("Total de pedidos buscados no Firestore:", snapshot.docs.length); 
+  
         snapshot.docs.forEach((docPedido) => {
           const pedidoData = docPedido.data();
-          // Usar 'criadoEm' para a data e hora do pedido
-          const dataPedido = pedidoData.criadoEm?.toDate
-            ? pedidoData.criadoEm.toDate()
-            : new Date();
-
+          console.log(`Processando pedido ID: ${docPedido.id}, Status: ${pedidoData.status}`); 
+          const dataPedido = pedidoData.criadoEm?.toDate ? pedidoData.criadoEm.toDate() : new Date();
+  
           if (pedidoData.carrinho && Array.isArray(pedidoData.carrinho)) {
             pedidoData.carrinho.forEach((itemCarrinho) => {
-              const promise = getDoc(
-                doc(db, "produtos", itemCarrinho.produtoId || itemCarrinho.id)
-              )
+              const productId = itemCarrinho.produtoId || itemCarrinho.id;
+              if (!productId) {
+                  console.warn("ID do produto ausente no item do carrinho:", itemCarrinho);
+                  return; // Pula se não houver ID do produto
+              }
+              const promise = getDoc(doc(db, "produtos", productId))
                 .then((docProduto) => {
                   if (docProduto.exists()) {
                     const produtoData = docProduto.data();
+                    console.log(`  Verificando produto ID: ${productId}, UID do Fornecedor do Produto: ${produtoData.fornecedor_uid}, UID do Fornecedor Atual: ${currentFornecedorId}`); // Adicione este log crucial
+  
                     if (produtoData.fornecedor_uid === currentFornecedorId) {
                       const vendaItem = {
-                        id: `${docPedido.id}-${itemCarrinho.produtoId || itemCarrinho.id}`,
+                        id: `${docPedido.id}-${productId}`,
                         nomeProduto: itemCarrinho.nome,
                         quantidade: itemCarrinho.quantidade,
                         precoUnitario: itemCarrinho.preco,
                         imageUrl: itemCarrinho.imagem,
-                        dataPedido: dataPedido, // Data e hora da criação do pedido
+                        dataPedido: dataPedido,
                         statusPedido: pedidoData.status || "Desconhecido",
                         fornecedorNome: itemCarrinho.fornecedor,
                         clienteEmail: pedidoData.emailCliente,
                         nomeCliente: pedidoData.nomeCliente,
                       };
-
-                      if (vendaItem.statusPedido === "approved") {
+                      console.log(`    Item de venda encontrado para o fornecedor atual. Status: ${vendaItem.statusPedido}`); // Adicione isso
+                      if (isApproved(vendaItem.statusPedido)) {
                         aprovadasTemp.push(vendaItem);
-                      } else if (vendaItem.statusPedido === "pending") {
+                      } else if (isPending(vendaItem.statusPedido)) {
                         pendentesTemp.push(vendaItem);
                       }
+                    } else {
+                      console.log(`    UID do fornecedor do produto (${produtoData.fornecedor_uid}) NÃO corresponde ao UID do fornecedor atual (${currentFornecedorId}). Pulando item de venda.`); // Adicione isso
                     }
+                  } else {
+                    console.log(`  Produto não encontrado para o ID: ${productId}`); 
                   }
                 })
                 .catch((error) => {
                   console.error(
                     "Erro ao buscar detalhes do produto para item do carrinho:",
-                    itemCarrinho.produtoId || itemCarrinho.id,
+                    productId,
                     error
                   );
                 });
               productPromises.push(promise);
             });
+          } else {
+            console.log(`Pedido ${docPedido.id} não possui um array 'carrinho' válido.`); 
           }
         });
-
+  
         await Promise.all(productPromises);
-
-        // Ordena ambas as listas pela data do pedido, do mais novo para o mais antigo
+  
         aprovadasTemp.sort(
           (a, b) => b.dataPedido.getTime() - a.dataPedido.getTime()
         );
         pendentesTemp.sort(
           (a, b) => b.dataPedido.getTime() - a.dataPedido.getTime()
         );
-
+  
         setVendasAprovadas(aprovadasTemp);
         setVendasPendentes(pendentesTemp);
         setLoading(false);
+  
         console.log(
-          "VendasScreen: Vendas carregadas em tempo real para fornecedor:",
-          currentFornecedorId,
-          "Aprovadas:",
+          "Contagem Final de Vendas - Aprovadas:",
           aprovadasTemp.length,
           "Pendentes:",
           pendentesTemp.length
@@ -136,7 +155,7 @@ const VendasScreen = () => {
         Alert.alert("Erro", "Não foi possível carregar as vendas.");
       }
     );
-
+  
     return () => unsubscribeFirestore();
   }, [currentFornecedorId]);
 
@@ -166,8 +185,6 @@ const VendasScreen = () => {
             .replace(".", ",")}
         </Text>
         <Text style={styles.orderDateTime}>
-          {" "}
-          {/* Nova estilização para data e hora */}
           {"Pedido em: "}
           {item.dataPedido
             ? item.dataPedido.toLocaleDateString("pt-BR")
@@ -223,7 +240,6 @@ const VendasScreen = () => {
         <Text style={styles.headerTitle}>{"Minhas Vendas"}</Text>
         <Text style={{ width: 40 }}></Text>
       </View>
-
       {/* Abas para alternar entre Aprovados e Pendentes */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity
@@ -259,7 +275,6 @@ const VendasScreen = () => {
           </Text>
         </TouchableOpacity>
       </View>
-
       {currentTab === "aprovadas" ? (
         vendasAprovadas.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -279,24 +294,25 @@ const VendasScreen = () => {
             contentContainerStyle={styles.listContainer}
           />
         )
-      ) : // currentTab === 'pendentes'
-      vendasPendentes.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Icon name="timer-sand" size={80} color="#ccc" />
-          <Text style={styles.emptyText}>
-            {"Nenhum pedido pendente para você."}
-          </Text>
-          <Text style={styles.emptySubText}>
-            {"Aguarde a aprovação de novos pedidos!"}
-          </Text>
-        </View>
       ) : (
-        <FlatList
-          data={vendasPendentes}
-          renderItem={renderVendaItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-        />
+        vendasPendentes.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Icon name="timer-sand" size={80} color="#ccc" />
+            <Text style={styles.emptyText}>
+              {"Nenhum pedido pendente para você."}
+            </Text>
+            <Text style={styles.emptySubText}>
+              {"Aguarde a aprovação de novos pedidos!"}
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={vendasPendentes}
+            renderItem={renderVendaItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContainer}
+          />
+        )
       )}
     </SafeAreaView>
   );
@@ -439,7 +455,6 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   orderDateTime: {
-    // Estilo para data e hora
     fontSize: 12,
     color: "#999",
     marginTop: 5,
@@ -450,10 +465,10 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   statusApproved: {
-    color: "#28a745", // Verde para aprovado
+    color: "#28a745",
   },
   statusPending: {
-    color: "#ffc107", // Amarelo/Laranja para pendente
+    color: "#ffc107",
   },
   customerInfo: {
     fontSize: 12,

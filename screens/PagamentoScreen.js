@@ -11,6 +11,7 @@ import {
   Platform,
   Clipboard,
   ScrollView,
+  KeyboardAvoidingView,
   Image,
   Dimensions,
 } from "react-native";
@@ -51,10 +52,10 @@ const NATIONAL_HOLIDAYS_2025 = [
   "11-15", // Proclamação da República
   "12-25", // Natal
 ];
-// (Manter todas as constantes e funções do backend originais aqui...)
+
 
 const PagamentoScreen = ({ route }) => {
-  // (Manter todos os states e efeitos orig
+ 
   // const PagamentoScreen = ({ route }) => {
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const { carrinho, frete, cep, onClearCart } = route.params || {};
@@ -501,6 +502,10 @@ const PagamentoScreen = ({ route }) => {
   };
 
   return (
+    <KeyboardAvoidingView
+    style={{ flex: 1 }}
+    behavior={Platform.OS === "ios" ? "padding" : "height"}
+  >
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f8f9fa" }}>
       <LinearGradient
         colors={["#4CAF50", "#8BC34A"]}
@@ -828,6 +833,7 @@ const PagamentoScreen = ({ route }) => {
         </View>
       </Modal>
     </SafeAreaView>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -839,34 +845,28 @@ const styles = StyleSheet.create({
   },
 
   animationContainer: {
-    flex: 1, // Faz o container ocupar toda a altura e largura do Modal
-    justifyContent: "center", // Centraliza o conteúdo verticalmente
-    alignItems: "center", // Centraliza o conteúdo horizontalmente
-    backgroundColor: "rgba(255, 255, 255, 1)", // Fundo branco sólido
+    flex: 1, 
+    justifyContent: "center", 
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 1)", 
   },
   lottieFullScreen: {
-    // Como a animação é quadrada (600x600), podemos fazer ela ocupar 100% da largura
-    // e deixar a altura se ajustar proporcionalmente. O 'flex: 1' no container
-    // e centralização vão ajudar a posicioná-la.
+   
     width: "100%",
-    // Para manter a proporção e evitar o corte/estica, podemos usar aspectRatio: 1 (se a animação for quadrada)
-    // ou apenas flex: 1 se o LottieView se auto-ajustar bem dentro do container flex.
-    // Vamos tentar flex: 1 no LottieView, pois ele geralmente lida bem com isso.
+    
     flex: 1,
-    // Se flex: 1 não funcionar perfeitamente, tente:
-    // height: '100%', // Remova esta linha se usar aspect ratio ou flex: 1 para evitar esticar
-    // aspectRatio: 1, // Adicione esta linha se sua animação for quadrada (como 600x600) e você quer garantir que ela permaneça assim.
+    
   },
   successText: {
     marginTop: 5,
     fontSize: 20,
     fontWeight: "bold",
     color: "#4CAF50",
-    position: "absolute", // Para posicionar o texto acima da animação
-    bottom: 80, // Ajuste a distância da parte inferior
-    zIndex: 1, // Garante que o texto esteja acima da animação
-    textAlign: "center", // Centraliza o texto se for longo
-    width: "100%", // Garante que o texto ocupe a largura completa para centralização
+    position: "absolute", 
+    bottom: 80, 
+    zIndex: 1,
+    textAlign: "center", 
+    width: "100%", 
   },
 
   // Header

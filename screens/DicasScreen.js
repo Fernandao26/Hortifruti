@@ -1,8 +1,7 @@
-// screens/DicasScreen.js
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Image, Alert } from 'react-native';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebaseConfig'; 
+import { db } from '../firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -10,40 +9,129 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 const DicasScreen = () => {
   const [dicas, setDicas] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('frutas'); 
   const navigation = useNavigation();
 
   useEffect(() => {
+   
     const q = query(
       collection(db, 'dicas'),
-      orderBy('criadoEm', 'desc')
+      orderBy('criadoEm', 'desc') 
     );
 
+    
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const dicasList = snapshot.docs.map(doc => {
         const data = doc.data();
         return {
-          id: doc.id, 
+          id: doc.id,
           ...data,
+          
           criadoEm: data.criadoEm?.toDate ? data.criadoEm.toDate().toISOString() : data.criadoEm,
         };
       });
-      setDicas(dicasList);
-      setLoading(false);
+      setDicas(dicasList); 
+      setLoading(false); 
       console.log("DicasScreen: Dicas carregadas em tempo real.");
     }, (error) => {
       console.error("DicasScreen: Erro ao carregar dicas:", error);
-      setLoading(false);
-      Alert.alert("Erro", "Não foi possível carregar as dicas.");
+      setLoading(false); 
+      Alert.alert("Erro", "Não foi possível carregar as dicas."); 
     });
 
-    return () => unsubscribe(); 
+   
+    return () => unsubscribe();
   }, []);
 
+ 
+  const filterAndOrderDicas = (category) => {
+    if (dicas.length === 0) return []; 
+
+    let filteredList = [];
+
+    
+    if (category === 'frutas') {
+      filteredList = dicas.filter(dica =>
+        
+        dica.categoria?.toLowerCase() === 'frutas' ||
+        dica.titulo?.toLowerCase().includes('abacaxi') ||
+        dica.titulo?.toLowerCase().includes('abacate') ||
+        dica.titulo?.toLowerCase().includes('uva') ||
+        dica.titulo?.toLowerCase().includes('mexerica/tangerina') ||
+        dica.titulo?.toLowerCase().includes('frutas: saúde e disposição')
+      );
+
+      
+      const indexPrimeiraFruta = filteredList.findIndex(dica =>
+        dica.titulo?.toLowerCase() === 'frutas: saúde e disposição'
+      );
+
+      
+      if (indexPrimeiraFruta > -1) {
+        const primeiraFrutaDica = filteredList[indexPrimeiraFruta];
+        filteredList.splice(indexPrimeiraFruta, 1); 
+        filteredList.unshift(primeiraFrutaDica); 
+      }
+
+    }
+    
+    else if (category === 'legumesVerduras') {
+      filteredList = dicas.filter(dica =>
+        
+        dica.categoria?.toLowerCase() === 'legumes e verduras' ||
+        dica.titulo?.toLowerCase().includes('abóbora/moranga') ||
+        dica.titulo?.toLowerCase().includes('legumes e verduras: promovendo saúde')
+      );
+
+      
+      const indexPrimeiraLegumeVerdura = filteredList.findIndex(dica =>
+        dica.titulo?.toLowerCase() === 'legumes e verduras: promovendo saúde'
+      );
+
+      
+      if (indexPrimeiraLegumeVerdura > -1) {
+        const primeiraLegumeVerduraDica = filteredList[indexPrimeiraLegumeVerdura];
+        filteredList.splice(indexPrimeiraLegumeVerdura, 1);
+        filteredList.unshift(primeiraLegumeVerduraDica);
+      }
+
+    }
+    
+    else if (category === 'demais') {
+      
+      const dicasFrutasTemp = dicas.filter(dica =>
+        dica.categoria?.toLowerCase() === 'frutas' ||
+        dica.titulo?.toLowerCase().includes('abacaxi') ||
+        dica.titulo?.toLowerCase().includes('abacate') ||
+        dica.titulo?.toLowerCase().includes('uva') ||
+        dica.titulo?.toLowerCase().includes('mexerica/tangerina') ||
+        dica.titulo?.toLowerCase().includes('frutas: saúde e disposição')
+      );
+      const dicasVerdurasLegumesTemp = dicas.filter(dica =>
+        dica.categoria?.toLowerCase() === 'legumes e verduras' ||
+        dica.titulo?.toLowerCase().includes('abóbora/moranga') ||
+        dica.titulo?.toLowerCase().includes('legumes e verduras: promovendo saúde')
+      );
+
+      
+      filteredList = dicas.filter(dica =>
+        !dicasFrutasTemp.includes(dica) && !dicasVerdurasLegumesTemp.includes(dica)
+      );
+    }
+
+    return filteredList; 
+  };
+
+  
+  const currentDicas = filterAndOrderDicas(activeTab);
+
+  
   const renderDicaItem = ({ item }) => (
     <TouchableOpacity
       style={styles.card}
       onPress={() => navigation.navigate('DetalhesDica', { dicaId: item.id })}
     >
+    
       {item.imageUrl ? (
         <Image source={{ uri: item.imageUrl }} style={styles.dicaImage} />
       ) : (
@@ -59,6 +147,7 @@ const DicasScreen = () => {
     </TouchableOpacity>
   );
 
+  
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -78,16 +167,37 @@ const DicasScreen = () => {
         <Text style={{ width: 40 }}></Text>
       </View>
 
-      {dicas.length === 0 ? (
+      {/* Container das abas de navegação */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'frutas' && styles.activeTab]}
+          onPress={() => setActiveTab('frutas')}
+        >
+          <Text style={[styles.tabText, activeTab === 'frutas' && styles.activeTabText]}>Frutas</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'legumesVerduras' && styles.activeTab]}
+          onPress={() => setActiveTab('legumesVerduras')}
+        >
+          <Text style={[styles.tabText, activeTab === 'legumesVerduras' && styles.activeTabText]}>Legumes e Verduras</Text>
+        </TouchableOpacity>
+        
+      </View>
+
+     
+      {currentDicas.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Icon name="lightbulb-on-outline" size={80} color="#ccc" />
-          {/* Apenas uma pequena alteração para forçar reprocessamento */}
-          <Text style={styles.emptyText}>{'Nenhuma dica disponível no momento. Tente novamente mais tarde.'}</Text> 
+          <Text style={styles.emptyText}>
+            {activeTab === 'frutas' && 'Nenhuma dica de fruta disponível no momento.'}
+            {activeTab === 'legumesVerduras' && 'Nenhuma dica de legumes e verduras disponível no momento.'}
+            
+          </Text>
           <Text style={styles.emptySubText}>{'Adicione novas dicas no Firestore para vê-las aqui!'}</Text>
         </View>
       ) : (
         <FlatList
-          data={dicas}
+          data={currentDicas}
           renderItem={renderDicaItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContainer}
@@ -213,6 +323,31 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     textDecorationLine: 'underline',
     fontSize: 14,
+  },
+  // Estilos para as abas
+  tabContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingVertical: 10,
+  },
+  tabButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+  },
+  activeTab: {
+    backgroundColor: '#69A461', // Cor de fundo para a aba ativa
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#666',
+  },
+  activeTabText: {
+    color: '#fff', // Cor do texto para a aba ativa
   },
 });
 

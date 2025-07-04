@@ -1,8 +1,8 @@
-// screens/DetalhesPedidoScreen.js
+
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, ScrollView, TouchableOpacity, Alert, Clipboard, Platform } from 'react-native';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig'; 
+import { doc, getDoc, updateDoc, writeBatch } from 'firebase/firestore'; // Importar updateDoc e writeBatch
+import { db } from '../firebaseConfig';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -10,10 +10,11 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 export default function DetalhesPedidoScreen() {
   const route = useRoute();
   const navigation = useNavigation();
-  const { pedidoId } = route.params; 
+  const { pedidoId } = route.params;
 
   const [pedido, setPedido] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isCancelling, setIsCancelling] = useState(false); 
 
   useEffect(() => {
     const fetchPedidoDetails = async () => {
@@ -31,7 +32,10 @@ export default function DetalhesPedidoScreen() {
           setPedido({
             id: docSnap.id,
             ...data,
+            
             criadoEm: data.criadoEm?.toDate ? data.criadoEm.toDate().toISOString() : data.criadoEm,
+            dataAprovacao: data.dataAprovacao?.toDate ? data.dataAprovacao.toDate().toISOString() : data.dataAprovacao,
+            statusAtualizadoEm: data.statusAtualizadoEm?.toDate ? data.statusAtualizadoEm.toDate().toISOString() : data.statusAtualizadoEm,
           });
           console.log("Detalhes do pedido carregados:", data);
         } else {
@@ -50,43 +54,54 @@ export default function DetalhesPedidoScreen() {
 
   const formatarData = (timestamp) => {
     if (!timestamp) return 'N/A';
-    return new Date(timestamp).toLocaleDateString('pt-BR', {
+   
+    const date = typeof timestamp === 'string' ? new Date(timestamp) : new Date(timestamp.seconds * 1000);
+    if (isNaN(date.getTime())) return "N/A"; 
+    return date.toLocaleDateString('pt-BR', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
     });
   };
 
   const translateStatus = (status) => {
-    switch (status) {
+    switch (status?.toLowerCase()) { 
       case 'approved':
       case 'success':
+      case 'aprovado':
+      case 'sucesso':
         return 'Aprovado';
       case 'pending':
-        return 'Pendente';
+      case 'pendente':
       case 'pending_payment':
-        return 'Pagamento Pendente';
+        return 'Pendente';
       case 'cancelled':
-        return 'Cancelado';
+      case 'cancelado':
       case 'rejected':
-        return 'Rejeitado';
+      case 'rejeitado':
+        return 'Cancelado';
       default:
-        return status; 
+        return status;
     }
   };
 
   const getStatusStyle = (status) => {
-    switch (status) {
+    switch (status?.toLowerCase()) { 
       case 'approved':
       case 'success':
-        return { color: '#0F9D58' }; 
+      case 'aprovado':
+      case 'sucesso':
+        return { color: '#0F9D58' };
       case 'pending':
+      case 'pendente':
       case 'pending_payment':
-        return { color: '#FFA500' }; 
+        return { color: '#FFA500' };
       case 'cancelled':
+      case 'cancelado':
       case 'rejected':
-        return { color: '#FF3D59' }; 
+      case 'rejeitado':
+        return { color: '#FF3D59' };
       default:
-        return { color: '#333' }; 
+        return { color: '#333' };
     }
   };
 
@@ -98,6 +113,68 @@ export default function DetalhesPedidoScreen() {
       Alert.alert("Erro", "Código PIX não disponível.");
     }
   };
+
+  
+  const handleCancelOrder = async () => {
+    if (!pedido || isCancelling) return;
+
+    Alert.alert(
+      "Confirmar Cancelamento",
+      "Tem certeza que deseja cancelar este pedido? O estoque dos produtos será restaurado.",
+      [
+        {
+          text: "Não",
+          style: "cancel"
+        },
+        {
+          text: "Sim",
+          onPress: async () => {
+            setIsCancelling(true); 
+            try {
+              const batch = writeBatch(db); 
+              const pedidoRef = doc(db, "pedidos", pedidoId);
+
+              
+              batch.update(pedidoRef, {
+                status: 'cancelled',
+                statusAtualizadoEm: new Date(), 
+              });
+
+              
+              if (pedido.carrinho && pedido.carrinho.length > 0) {
+                for (const item of pedido.carrinho) {
+                  const productId = item.produtoId || item.id; 
+                  if (productId) {
+                    const productRef = doc(db, "produtos", productId);
+                 
+                    const productSnap = await getDoc(productRef);
+                    if (productSnap.exists()) {
+                      const currentStock = productSnap.data().estoque || 0;
+                      const newStock = currentStock + item.quantidade;
+                      batch.update(productRef, { estoque: newStock });
+                    } else {
+                      console.warn(`Produto com ID ${productId} não encontrado para reverter estoque.`);
+                    }
+                  }
+                }
+              }
+
+              await batch.commit(); 
+              Alert.alert("Sucesso", "Pedido cancelado e estoque restaurado!");
+              
+              setPedido(prevPedido => ({ ...prevPedido, status: 'cancelled' }));
+            } catch (error) {
+              console.error("Erro ao cancelar pedido e restaurar estoque:", error);
+              Alert.alert("Erro", "Não foi possível cancelar o pedido e restaurar o estoque.");
+            } finally {
+              setIsCancelling(false); 
+            }
+          }
+        }
+      ]
+    );
+  };
+
 
   if (loading) {
     return (
@@ -130,6 +207,8 @@ export default function DetalhesPedidoScreen() {
     fornecedorHeaderText = 'Fornecedor: Desconhecido';
   }
 
+  const canCancel = pedido.status?.toLowerCase() === 'pending' || pedido.status?.toLowerCase() === 'pending_payment';
+
   return (
     <SafeAreaView style={styles.fullScreen}>
       <View style={styles.header}>
@@ -137,7 +216,7 @@ export default function DetalhesPedidoScreen() {
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detalhes do Pedido</Text>
-        <Text style={{width: 40}}></Text>
+        <Text style={{ width: 40 }}></Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.contentContainer}>
@@ -145,46 +224,46 @@ export default function DetalhesPedidoScreen() {
         <Text style={styles.pedidoIdDisplay}>ID do Pedido: #{pedido.id.substring(0, 8)}</Text>
 
         <View style={styles.infoSection}>
-            <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Status:</Text>
-                <Text style={[styles.infoValue, getStatusStyle(pedido.status)]}>{translateStatus(pedido.status)}</Text>
-            </View>
-            <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Data do Pedido:</Text>
-                <Text style={styles.infoValue}>{formatarData(pedido.criadoEm)}</Text>
-            </View>
-            <View style={styles.infoRowAddress}> 
-                <Text style={styles.infoLabel}>Endereço de Entrega:</Text>
-                <Text style={styles.infoValueAddress}>{pedido.enderecoEntrega || 'Não informado'}</Text> 
-            </View>
-            <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Forma de Pagamento:</Text>
-                <Text style={styles.infoValue}>{pedido.formaPagamento || 'Não informada'}</Text>
-            </View>
-            <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>CPF do Cliente:</Text>
-                <Text style={styles.infoValue}>{pedido.cpfCliente || 'Não informado'}</Text>
-            </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Status:</Text>
+            <Text style={[styles.infoValue, getStatusStyle(pedido.status)]}>{translateStatus(pedido.status)}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Data do Pedido:</Text>
+            <Text style={styles.infoValue}>{formatarData(pedido.criadoEm)}</Text>
+          </View>
+          <View style={styles.infoRowAddress}>
+            <Text style={styles.infoLabel}>Endereço de Entrega:</Text>
+            <Text style={styles.infoValueAddress}>{pedido.enderecoEntrega || 'Não informado'}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Forma de Pagamento:</Text>
+            <Text style={styles.infoValue}>{pedido.formaPagamento || 'Não informada'}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>CPF do Cliente:</Text>
+            <Text style={styles.infoValue}>{pedido.cpfCliente || 'Não informado'}</Text>
+          </View>
         </View>
 
         <Text style={styles.sectionTitle}>Resumo de Valores:</Text>
         <View style={styles.summaryDetailsContainer}>
-            <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Subtotal Produtos:</Text>
-                <Text style={styles.summaryValue}>R$ {pedido.subtotal?.toFixed(2) || '0.00'}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Taxa de Serviço:</Text>
-                <Text style={styles.summaryValue}>R$ {pedido.taxaServico?.toFixed(2) || '0.00'}</Text>
-            </View>
-            <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Frete:</Text>
-                <Text style={styles.summaryValue}>R$ {pedido.frete?.toFixed(2) || '0.00'}</Text>
-            </View>
-            <View style={[styles.summaryRow, styles.totalRow]}>
-                <Text style={styles.totalLabel}>Total do Pedido:</Text>
-                <Text style={styles.totalValue}>R$ {pedido.total?.toFixed(2) || '0.00'}</Text>
-            </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Subtotal Produtos:</Text>
+            <Text style={styles.summaryValue}>R$ {pedido.subtotal?.toFixed(2) || '0.00'}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Taxa de Serviço:</Text>
+            <Text style={styles.summaryValue}>R$ {pedido.taxaServico?.toFixed(2) || '0.00'}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Frete:</Text>
+            <Text style={styles.summaryValue}>R$ {pedido.frete?.toFixed(2) || '0.00'}</Text>
+          </View>
+          <View style={[styles.summaryRow, styles.totalRow]}>
+            <Text style={styles.totalLabel}>Total do Pedido:</Text>
+            <Text style={styles.totalValue}>R$ {pedido.total?.toFixed(2) || '0.00'}</Text>
+          </View>
         </View>
 
         <Text style={styles.sectionTitle}>Itens do Pedido:</Text>
@@ -200,16 +279,31 @@ export default function DetalhesPedidoScreen() {
         )}
 
         {pedido.qrCodePix ? (
-            <View style={styles.pixSection}>
-                <Text style={styles.pixTitle}>Código PIX para Pagamento:</Text>
-                <Text style={styles.pixCode}>{pedido.qrCodePix}</Text>
-                <TouchableOpacity style={styles.copyPixButton} onPress={handleCopyPix}>
-                    <Icon name="content-copy" size={20} color="#FFFFFF" />
-                    <Text style={styles.copyPixButtonText}>Copiar Código PIX</Text>
-                </TouchableOpacity>
-            </View>
+          <View style={styles.pixSection}>
+            <Text style={styles.pixTitle}>Código PIX para Pagamento:</Text>
+            <Text style={styles.pixCode}>{pedido.qrCodePix}</Text>
+            <TouchableOpacity style={styles.copyPixButton} onPress={handleCopyPix}>
+              <Icon name="content-copy" size={20} color="#FFFFFF" />
+              <Text style={styles.copyPixButtonText}>Copiar Código PIX</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
-            <Text style={styles.noPixText}>Código PIX não disponível para este pedido.</Text>
+          <Text style={styles.noPixText}>Código PIX não disponível para este pedido.</Text>
+        )}
+
+        
+        {canCancel && (
+          <TouchableOpacity
+            style={[styles.cancelButton, isCancelling && styles.cancelButtonDisabled]}
+            onPress={handleCancelOrder}
+            disabled={isCancelling}
+          >
+            {isCancelling ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.cancelButtonText}>Cancelar Pedido</Text>
+            )}
+          </TouchableOpacity>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -272,6 +366,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 16,
+    paddingBottom: 30, 
   },
   fornecedorHeader: {
     fontSize: 22,
@@ -296,7 +391,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 8,
   },
-  infoRowAddress: { 
+  infoRowAddress: {
     flexDirection: 'row',
     marginBottom: 8,
     alignItems: 'flex-start',
@@ -304,23 +399,23 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 16,
     color: '#666',
-    flex: 1, 
-    marginRight: 10, 
+    flex: 1,
+    marginRight: 10,
   },
   infoValue: {
     fontSize: 16,
     fontWeight: '500',
     color: '#333',
-    flex: 2, 
+    flex: 2,
     textAlign: 'right',
   },
-  infoValueAddress: { 
+  infoValueAddress: {
     fontSize: 16,
     fontWeight: '500',
     color: '#333',
-    flex: 2, 
+    flex: 2,
     textAlign: 'right',
-    flexWrap: 'wrap', 
+    flexWrap: 'wrap',
   },
   sectionTitle: {
     fontSize: 18,
@@ -332,7 +427,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
     paddingBottom: 5,
   },
-  summaryDetailsContainer: { 
+  summaryDetailsContainer: {
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 15,
@@ -371,7 +466,7 @@ const styles = StyleSheet.create({
   totalValue: {
     fontSize: 17,
     fontWeight: 'bold',
-    color: '#0F9D58', 
+    color: '#0F9D58',
   },
   productItem: {
     flexDirection: 'row',
@@ -452,5 +547,27 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     textAlign: 'center',
     marginTop: 20,
-  }
+  },
+  
+  cancelButton: {
+    backgroundColor: '#FF3D59', 
+    paddingVertical: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  cancelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  cancelButtonDisabled: {
+    backgroundColor: '#FF8A9B', 
+  },
 });

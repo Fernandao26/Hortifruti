@@ -1,20 +1,39 @@
 import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet, Dimensions } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native'; // Mantido para consistência
+import { useNavigation, useRoute } from '@react-navigation/native'; 
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
 
-// --- A sua imagem local da pasta 'img' ---
-// O nome exato que você confirmou: confirmação de pagamento.png
+
 const IMAGEM_DE_FUNDO = require('../img/confirmação de pagamento.png');
 
-// Obter as dimensões da tela para garantir que a imagem ocupe a tela inteira
+
 const { width, height } = Dimensions.get('window');
 
 const PagamentoProcessadoScreen = () => {
   const navigation = useNavigation();
   // route não é estritamente necessário nesta versão simplificada, mas mantido.
-  // const route = useRoute(); 
+  const route = useRoute(); 
 
-  const [imageError, setImageError] = useState(false); // Mantido para depuração de imagem
+  const [imageError, setImageError] = useState(false); 
+  useEffect(() => {
+    if (route.params?.pedidoId) {
+      atualizarStatusPedido(route.params.pedidoId);
+    }
+  }, [route.params?.pedidoId]);
+
+  const atualizarStatusPedido = async (pedidoId) => {
+    try {
+      const pedidoRef = doc(db, 'pedidos', pedidoId);
+      await updateDoc(pedidoRef, {
+        status: 'approved',
+        dataAprovacao: new Date(),
+      });
+      console.log('Status do pedido atualizado para "approved" no Firestore.');
+    } catch (error) {
+      console.error('Erro ao atualizar status do pedido:', error);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -25,11 +44,11 @@ const PagamentoProcessadoScreen = () => {
         // Componente Image para exibir a imagem de fundo
         <Image 
           source={IMAGEM_DE_FUNDO} 
-          style={styles.backgroundImage} // Usamos um estilo diferente para imagem de fundo
-          resizeMode="cover" // Garante que a imagem cubra toda a área
+          style={styles.backgroundImage} 
+          resizeMode="cover" 
           onError={(e) => {
             console.error("PagamentoProcessadoScreen: Erro ao carregar a imagem de fundo:", e.nativeEvent.error);
-            setImageError(true); // Define o estado de erro da imagem
+            setImageError(true); 
           }}
         />
       )}
@@ -52,23 +71,23 @@ const PagamentoProcessadoScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center', // Centraliza conteúdo verticalmente se não for full screen
-    alignItems: 'center', // Centraliza conteúdo horizontalmente
-    backgroundColor: '#E8F5E9', // Fundo de fallback caso a imagem não carregue
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: '#E8F5E9', 
   },
   backgroundImage: {
-    position: 'absolute', // Faz a imagem cobrir toda a tela
+    position: 'absolute', 
     top: 0,
     left: 0,
     width: width,
     height: height,
   },
   overlayContent: {
-    // Estilos para posicionar o texto
+   
     position: 'absolute',
-    bottom: height * 0.15, // Ajuste este valor para mover o texto para cima/baixo
+    bottom: height * 0.15, 
     width: '100%',
-    alignItems: 'center', // Centraliza o texto horizontalmente
+    alignItems: 'center',
   },
   imageErrorText: {
     fontSize: 18,
@@ -79,16 +98,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   successText: {
-    fontSize: 30, // Ajustado para ser mais compacto
+    fontSize: 30, 
     fontWeight: 'bold',
-    color: '#006400', // Um verde escuro forte para contraste com a imagem
+    color: '#006400', 
     textAlign: 'center',
-    marginBottom: 0, // Removido espaçamento extra
-    textShadowColor: 'rgba(0, 0, 0, 0.3)', // Sombra para o texto para melhor legibilidade
+    marginBottom: 0, 
+    textShadowColor: 'rgba(0, 0, 0, 0.3)', 
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 5,
   },
-  // O estilo subtitleText foi removido
+  
 });
 
 export default PagamentoProcessadoScreen;

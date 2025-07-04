@@ -1,4 +1,3 @@
-// screens/PedidosScreen.js
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -22,12 +21,14 @@ import { db, auth } from "../firebaseConfig";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import { wp, hp } from "../src/utils/responsive";
+import { wp, hp } from "../src/utils/responsive"; // Certifique-se de que estes utilitários estão configurados corretamente
 
 const PedidosScreen = () => {
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
+  const [activeTab, setActiveTab] = useState("aprovados"); // Novo estado para a aba ativa
+
   const navigation = useNavigation();
   const route = useRoute();
 
@@ -52,7 +53,7 @@ const PedidosScreen = () => {
       setLoading(true);
       const q = query(
         collection(db, "pedidos"),
-        where("userId", "==", currentUser.uid),
+        where("userId", "==", currentUser.uid), // Filtra pedidos pelo UID do cliente
         orderBy("criadoEm", "desc")
       );
 
@@ -91,6 +92,42 @@ const PedidosScreen = () => {
     }
   }, [currentUser]);
 
+  // Funções de verificação de status
+  const isApproved = (status) =>
+    ["approved", "aprovado", "success", "sucesso"].includes(
+      status?.toLowerCase()
+    );
+  const isPending = (status) =>
+    ["pending", "pendente", "pending_payment"].includes(status?.toLowerCase());
+  const isCancelled = (status) =>
+    ["cancelled", "cancelado", "rejected", "rejeitado"].includes(
+      status?.toLowerCase()
+    );
+
+  // Filtrar pedidos para cada aba
+  const pedidosAprovados = pedidos.filter((pedido) =>
+    isApproved(pedido.status)
+  );
+  const pedidosPendentes = pedidos.filter((pedido) =>
+    isPending(pedido.status)
+  );
+  const pedidosCancelados = pedidos.filter((pedido) =>
+    isCancelled(pedido.status)
+  );
+
+  const getFilteredPedidos = () => {
+    switch (activeTab) {
+      case "aprovados":
+        return pedidosAprovados;
+      case "pendentes":
+        return pedidosPendentes;
+      case "cancelados":
+        return pedidosCancelados;
+      default:
+        return [];
+    }
+  };
+
   const renderPedidoItem = ({ item }) => {
     const totalItens = item.carrinho
       ? item.carrinho.reduce((sum, cartItem) => sum + cartItem.quantidade, 0)
@@ -98,7 +135,10 @@ const PedidosScreen = () => {
 
     const formatarData = (timestamp) => {
       if (!timestamp) return "N/A";
-      return new Date(timestamp).toLocaleDateString("pt-BR", {
+      // Certifique-se de que o timestamp é um valor válido para Date
+      const date = typeof timestamp === 'string' ? new Date(timestamp) : new Date(timestamp.seconds * 1000);
+      if (isNaN(date.getTime())) return "N/A"; // Verifica se a data é inválida
+      return date.toLocaleDateString("pt-BR", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
@@ -108,18 +148,21 @@ const PedidosScreen = () => {
     };
 
     const translateStatus = (status) => {
-      switch (status) {
+      switch (status?.toLowerCase()) { // Use toLowerCase para garantir consistência
         case "approved":
+        case "aprovado":
         case "success":
+        case "sucesso":
           return "Aprovado";
         case "pending":
-          return "Pendente";
+        case "pendente":
         case "pending_payment":
-          return "Pagamento Pendente";
+          return "Pendente";
         case "cancelled":
-          return "Cancelado";
+        case "cancelado":
         case "rejected":
-          return "Rejeitado";
+        case "rejeitado":
+          return "Cancelado";
         default:
           return status;
       }
@@ -169,7 +212,8 @@ const PedidosScreen = () => {
           {"Itens do Pedido (" + totalItens + " total):"}
         </Text>
         {item.carrinho && item.carrinho.length > 0 ? (
-          item.carrinho.map((cartItem, index) => (
+          // Exibir apenas os 2 primeiros itens e depois "Ver todos"
+          item.carrinho.slice(0, 2).map((cartItem, index) => (
             <View key={index} style={styles.productItem}>
               <Text style={styles.productName}>{cartItem.nome}</Text>
               <Text style={styles.productDetails}>
@@ -183,25 +227,40 @@ const PedidosScreen = () => {
             Nenhum item encontrado neste pedido.
           </Text>
         )}
+        {item.carrinho && item.carrinho.length > 2 && (
+          <Text style={styles.detalhesLink}>Ver mais itens...</Text>
+        )}
 
-        <Text style={styles.detalhesLink}>Ver Todos os Itens e Detalhes →</Text>
+        <TouchableOpacity
+          style={styles.detalhesLinkContainer}
+          onPress={() =>
+            navigation.navigate("DetalhesPedido", { pedidoId: item.id })
+          }
+        >
+          <Text style={styles.detalhesLink}>Ver Todos os Itens e Detalhes →</Text>
+        </TouchableOpacity>
       </TouchableOpacity>
     );
   };
 
   const getStatusStyle = (status) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "approved":
       case "success":
-        return { color: "#0F9D58" };
+      case "aprovado":
+      case "sucesso":
+        return { color: "#0F9D58" }; // Verde
       case "pending":
+      case "pendente":
       case "pending_payment":
-        return { color: "#FFA500" };
+        return { color: "#FFA500" }; // Laranja
       case "cancelled":
+      case "cancelado":
       case "rejected":
-        return { color: "#FF3D59" };
+      case "rejeitado":
+        return { color: "#FF3D59" }; // Vermelho
       default:
-        return { color: "#333" };
+        return { color: "#333" }; // Cor padrão
     }
   };
 
@@ -213,6 +272,8 @@ const PedidosScreen = () => {
       </View>
     );
   }
+
+  const currentPedidos = getFilteredPedidos();
 
   return (
     <>
@@ -228,11 +289,35 @@ const PedidosScreen = () => {
           <Text style={{ width: 40 }}></Text>
         </View>
 
-        {pedidos.length === 0 ? (
+        {/* Abas de navegação */}
+        <View style={styles.tabContainer}>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === "aprovados" && styles.activeTab]}
+            onPress={() => setActiveTab("aprovados")}
+          >
+            <Text style={[styles.tabText, activeTab === "aprovados" && styles.activeTabText]}>Aprovados</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === "pendentes" && styles.activeTab]}
+            onPress={() => setActiveTab("pendentes")}
+          >
+            <Text style={[styles.tabText, activeTab === "pendentes" && styles.activeTabText]}>Pendentes</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabButton, activeTab === "cancelados" && styles.activeTab]}
+            onPress={() => setActiveTab("cancelados")}
+          >
+            <Text style={[styles.tabText, activeTab === "cancelados" && styles.activeTabText]}>Cancelados</Text>
+          </TouchableOpacity>
+        </View>
+
+        {currentPedidos.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Icon name="basket-off-outline" size={80} color="#ccc" />
             <Text style={styles.emptyText}>
-              Você ainda não fez nenhum pedido.
+              {activeTab === "aprovados" && "Nenhum pedido aprovado encontrado."}
+              {activeTab === "pendentes" && "Nenhum pedido pendente encontrado."}
+              {activeTab === "cancelados" && "Nenhum pedido cancelado encontrado."}
             </Text>
             <TouchableOpacity
               style={styles.buttonGoHome}
@@ -243,56 +328,57 @@ const PedidosScreen = () => {
           </View>
         ) : (
           <FlatList
-            data={pedidos}
+            data={currentPedidos}
             renderItem={renderPedidoItem}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContainer}
           />
         )}
       </SafeAreaView>
-      <View style={styles.menuInferior}>
-        <TouchableOpacity
-          onPress={() => {
-            // <-- INÍCIO DA MUDANÇA AQUI
-            if (route.name !== "Home") {
-              // Verifica se a tela atual NÃO é 'HomeScreen'
-              navigation.navigate("Home"); // Só navega se não for a HomeScreen
-            }
-          }} // <-- FIM DA MUDANÇA AQUI
-        >
-          <Image
-            source={require("../img/Home.png")} // Caminho para sua imagem local
-            style={{ width: 24, height: 28 }}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-        <View style={styles.iconRow}>
-          <TouchableOpacity onPress={() => navigation.navigate("Pedidos")}>
-            <Image
-              source={require("../img/bolsa-de-compras.png")} // Caminho para sua imagem local
-              style={{ width: 28, height: 28 }}
-              resizeMode="contain"
-              tintColor={"#69a461"}
-            />
-          </TouchableOpacity>
-        </View>
+       {/* Menu inferior */}
+          <View style={styles.menuInferior}>
+            <TouchableOpacity
+              onPress={() => {
+                // <-- INÍCIO DA MUDANÇA AQUI
+                if (route.name !== "Home") {
+                  // Verifica se a tela atual NÃO é 'HomeScreen'
+                  navigation.navigate("Home"); // Só navega se não for a HomeScreen
+                }
+              }} // <-- FIM DA MUDANÇA AQUI
+            >
+              <Image
+                source={require("../img/Home.png")} // Caminho para sua imagem local
+                style={{ width: 24, height: 28 }}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+            <View style={styles.iconRow}>
+              <TouchableOpacity onPress={() => navigation.navigate("Pedidos")}>
+                <Image
+                  source={require("../img/bolsa-de-compras.png")} // Caminho para sua imagem local
+                  style={{ width: 28, height: 28 }}
+                  resizeMode="contain"
+                  tintColor={"#69a461"}
+                />
+              </TouchableOpacity>
+            </View>
 
-        <TouchableOpacity onPress={() => navigation.navigate("Receitas")}>
-          <Image
-            source={require("../img/receitas.png")} // Caminho para sua imagem local
-            style={{ width: 28, height: 28 }}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.navigate("Receitas")}>
+              <Image
+                source={require("../img/receitas.png")} // Caminho para sua imagem local
+                style={{ width: 28, height: 28 }}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate("Dicas")}>
-          <Image
-            source={require("../img/idea.png")} // Caminho para sua imagem local
-            style={{ width: 28, height: 28 }}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-      </View>
+            <TouchableOpacity onPress={() => navigation.navigate("Dicas")}>
+              <Image
+                source={require("../img/idea.png")} // Caminho para sua imagem local
+                style={{ width: 28, height: 28 }}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
     </>
   );
 };
@@ -370,6 +456,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 16,
+    paddingBottom: hp("10%"), // Espaço extra para o menu inferior
   },
   card: {
     backgroundColor: "#fff",
@@ -410,9 +497,12 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#333",
   },
+  detalhesLinkContainer: { // Novo estilo para o TouchableOpacity
+    marginTop: 10,
+    alignSelf: 'flex-end', // Alinha à direita
+  },
   detalhesLink: {
     color: "#007AFF",
-    marginTop: 10,
     textAlign: "right",
     textDecorationLine: "underline",
     fontSize: 14,
@@ -452,11 +542,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
-    paddingVertical: 13,
+    paddingVertical: 10,
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderColor: "#ccc",
     marginBottom: hp("5%"), // Ajuste se for fixo na parte inferior da tela
+  },
+  // Novos estilos para as abas
+  tabContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    paddingVertical: 10,
+  },
+  tabButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+  },
+  activeTab: {
+    backgroundColor: "#69A461", // Cor de fundo para a aba ativa
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#666",
+  },
+  activeTabText: {
+    color: "#fff", // Cor do texto para a aba ativa
   },
 });
 
